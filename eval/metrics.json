@@ -1,0 +1,56 @@
+{
+  "test_accuracy": 0.9639509916305542,
+  "test_loss": 0.10572679340839386,
+  "classification_report": {
+    "earthquake": {
+      "precision": 0.9294871794871795,
+      "recall": 0.9602649006622517,
+      "f1-score": 0.9446254071661238,
+      "support": 151.0
+    },
+    "fire": {
+      "precision": 0.9792746113989638,
+      "recall": 0.9921259842519685,
+      "f1-score": 0.9856584093872229,
+      "support": 381.0
+    },
+    "flood": {
+      "precision": 0.9776674937965261,
+      "recall": 0.9704433497536946,
+      "f1-score": 0.9740420271940667,
+      "support": 406.0
+    },
+    "landslide": {
+      "precision": 0.9203539823008849,
+      "recall": 0.9043478260869565,
+      "f1-score": 0.9122807017543859,
+      "support": 115.0
+    },
+    "normal": {
+      "precision": 0.9604863221884499,
+      "recall": 0.9461077844311377,
+      "f1-score": 0.9532428355957768,
+      "support": 334.0
+    },
+    "accuracy": 0.9639509733237203,
+    "macro avg": {
+      "precision": 0.9534539178344008,
+      "recall": 0.9546579690372019,
+      "f1-score": 0.9539698762195152,
+      "support": 1387.0
+    },
+    "weighted avg": {
+      "precision": 0.9639742848612133,
+      "recall": 0.9639509733237203,
+      "f1-score": 0.9639010391421425,
+      "support": 1387.0
+    }
+  },
+  "class_names": [
+    "earthquake",
+    "fire",
+    "flood",
+    "landslide",
+    "normal"
+  ]
+}
