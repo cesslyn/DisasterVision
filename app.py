@@ -1,3 +1,8 @@
+"""
+AI Disaster Classification System
+Run: streamlit run app.py
+"""
+
 import os, json, sqlite3, datetime
 import numpy as np
 import pandas as pd
@@ -10,11 +15,12 @@ import matplotlib.patches as mpatches
 import streamlit as st
 from PIL import Image
 
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  CONFIG
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLASS_NAMES = sorted(["earthquake", "fire", "flood", "landslide", "normal"])
 
-# Per-class palette
+# Per-class palette — works on both dark and light backgrounds
 CLS_HEX = {
     "earthquake": "#F63E31",
     "fire":       "#FF8C42",
@@ -37,21 +43,6 @@ DARK = dict(
     blob1    = "rgba(15,38,50,0.9)",
     blob2    = "rgba(246,62,49,0.08)",
 )
-
-# Light palette — clean white/slate, high contrast
-LIGHT = dict(
-    bg       = "#f1f5f9",
-    side_bg  = "#ffffff",
-    card_bg  = "#ffffff",
-    card_bdr = "#e2e8f0",
-    text     = "#0f172a",
-    sub      = "#64748b",
-    chart_bg = "#ffffff",
-    grid     = "#f1f5f9",
-    blob1    = "rgba(226,232,240,0.6)",
-    blob2    = "rgba(246,62,49,0.03)",
-)
-
 MODEL_PATH = os.path.join("models", "disaster_classifier.keras")
 DB_PATH    = "predictions.db"
 EVAL_DIR   = "eval"
@@ -65,12 +56,14 @@ PAGES = [
 ]
 
 def pal():
-    return DARK if st.session_state.get("dark", True) else LIGHT
+    return DARK
 
 def is_dark():
-    return st.session_state.get("dark", True)
+    return True
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  PAGE CONFIG
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 st.set_page_config(
     page_title="Disaster AI",
     page_icon="🚨",
@@ -78,7 +71,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  DATABASE
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS predictions (
@@ -104,7 +99,9 @@ def load_predictions(cls_filter="All", min_conf=0.0):
     conn.close()
     return df
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  MODEL
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH): return None
@@ -117,28 +114,13 @@ def run_predict(model, img):
     idx   = int(np.argmax(probs))
     return CLASS_NAMES[idx], float(probs[idx]), probs
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  CSS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def inject_css():
     p   = pal()
     drk = is_dark()
     title_color = "#ffffff" if drk else p['text']
-
-    # Sidebar shadow differs between modes
-    sidebar_shadow = "2px 0 20px rgba(0,0,0,0.3)" if drk else "2px 0 16px rgba(0,0,0,0.08)"
-    card_shadow    = "0 4px 24px rgba(0,0,0,0.25)" if drk else "0 2px 12px rgba(15,23,42,0.08)"
-    card_shadow_hv = "0 8px 32px rgba(0,0,0,0.35)" if drk else "0 6px 24px rgba(15,23,42,0.13)"
-    chart_shadow   = "0 4px 24px rgba(0,0,0,0.22)" if drk else "0 2px 12px rgba(15,23,42,0.06)"
-
-    # ── NAV BUTTON COLORS ──────────────────────────────────────────────────────
-    # Inactive icon: white in dark mode, dark slate in light mode (clearly visible on white sidebar)
-    nav_icon_color   = "#dce8ed" if drk else "#1e293b"
-    # Inactive button background pill: subtle in dark, light gray in light
-    nav_btn_bg       = "rgba(255,255,255,0.04)" if drk else "rgba(15,23,42,0.07)"
-    nav_btn_bdr      = "transparent" if drk else "#cbd5e1"
-    # Hover
-    nav_hover_bg     = "rgba(255,255,255,0.10)" if drk else "rgba(15,23,42,0.13)"
-    nav_hover_color  = "#ffffff" if drk else "#0f172a"
-    nav_hover_bdr    = "#1a3d50" if drk else "#94a3b8"
 
     st.markdown(f"""
 <style>
@@ -160,7 +142,7 @@ html, body, .stApp {{
     background-image:
         radial-gradient(ellipse 80% 60% at 5% 10%,  {p['blob1']} 0%, transparent 60%),
         radial-gradient(ellipse 55% 45% at 95% 90%,  {p['blob2']} 0%, transparent 55%),
-        radial-gradient(ellipse 40% 40% at 50% 50%, {'rgba(59,158,191,0.06)' if drk else 'rgba(59,158,191,0.03)'} 0%, transparent 70%);
+        radial-gradient(ellipse 40% 40% at 50% 50%, {'rgba(59,158,191,0.06)' if drk else 'rgba(59,158,191,0.04)'} 0%, transparent 70%);
 }}
 
 [data-testid="stHeader"], footer {{ display: none !important; }}
@@ -169,11 +151,11 @@ html, body, .stApp {{
 /* ── Sidebar icon rail ── */
 [data-testid="stSidebar"] {{
     min-width: 70px !important; max-width: 70px !important;
-    background: {p['side_bg']}{'dd' if drk else ''} !important;
+    background: {p['side_bg']} !important;
     backdrop-filter: blur(28px) !important;
     -webkit-backdrop-filter: blur(28px) !important;
     border-right: 1px solid {p['card_bdr']} !important;
-    box-shadow: {sidebar_shadow} !important;
+    box-shadow: {'2px 0 20px rgba(0,0,0,0.3)' if drk else '3px 0 16px rgba(0,32,48,0.18)'} !important;
 }}
 [data-testid="stSidebarContent"] {{
     padding: 16px 0 !important;
@@ -183,46 +165,63 @@ html, body, .stApp {{
 [data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
 [data-testid="stSidebar"] .stButton {{ width: 46px !important; margin: 1px auto !important; }}
 
-/* ── Reset ALL Streamlit button states inside sidebar ── */
+/* ── DARK MODE: Inactive nav button ── */
 [data-testid="stSidebar"] .stButton > button,
 [data-testid="stSidebar"] .stButton > button:focus,
 [data-testid="stSidebar"] .stButton > button:active,
-[data-testid="stSidebar"] .stButton > button:focus:not(:active),
-[data-testid="stSidebar"] .stButton > button:visited {{
+[data-testid="stSidebar"] .stButton > button:visited,
+[data-testid="stSidebar"] .stButton > button:focus:not(:active) {{
     width: 46px !important; height: 46px !important;
     padding: 0 !important; border-radius: 13px !important;
     font-size: 17px !important;
-    /* ── FIX: visible background pill + high-contrast icon color ── */
-    background: {nav_btn_bg} !important;
-    background-color: {nav_btn_bg} !important;
-    color: {nav_icon_color} !important;
-    border: 1px solid {nav_btn_bdr} !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: {'#b0ccd6' if drk else '#1e4a5a'} !important;
+    border: 1px solid {'transparent' if drk else 'rgba(30,74,90,0.25)'} !important;
     box-shadow: none !important;
     outline: none !important;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+    transition: all 0.15s ease !important;
 }}
-[data-testid="stSidebar"] .stButton > button:hover {{
-    background: {nav_hover_bg} !important;
-    background-color: {nav_hover_bg} !important;
-    color: {nav_hover_color} !important;
-    border-color: {nav_hover_bdr} !important;
+[data-testid="stSidebar"] .stButton > button p,
+[data-testid="stSidebar"] .stButton > button span,
+[data-testid="stSidebar"] .stButton > button div,
+[data-testid="stSidebar"] .stButton > button * {{
+    color: {'#b0ccd6' if drk else '#ffffff'} !important;
+    background: transparent !important;
+}}
+
+/* ── Hover state ── */
+[data-testid="stSidebar"] .stButton > button:hover,
+[data-testid="stSidebar"] .stButton > button:hover p,
+[data-testid="stSidebar"] .stButton > button:hover span,
+[data-testid="stSidebar"] .stButton > button:hover * {{
+    background: {'rgba(255,255,255,0.10)' if drk else 'rgba(246,62,49,0.18)'} !important;
+    background-color: {'rgba(255,255,255,0.10)' if drk else 'rgba(246,62,49,0.18)'} !important;
+    color: {'#ffffff' if drk else '#F63E31'} !important;
+    border-color: {'rgba(255,255,255,0.12)' if drk else 'rgba(246,62,49,0.35)'} !important;
     transform: none !important; opacity: 1 !important;
 }}
 
-/* ── Active (current page) nav button ── */
+/* ── Active / current page button ── */
 [data-testid="stSidebar"] .stButton > button[kind="primary"],
 [data-testid="stSidebar"] .stButton > button[kind="primary"]:focus,
 [data-testid="stSidebar"] .stButton > button[kind="primary"]:active,
 [data-testid="stSidebar"] .stButton > button[kind="primary"]:focus:not(:active) {{
-    background: {ACCENT}22 !important;
-    background-color: {ACCENT}22 !important;
+    background: {ACCENT}{'33' if drk else '22'} !important;
+    background-color: {ACCENT}{'33' if drk else '22'} !important;
     color: {ACCENT} !important;
-    border-color: {ACCENT}55 !important;
-    box-shadow: none !important;
+    border-color: {ACCENT}{'66' if drk else '55'} !important;
+    box-shadow: {'0 0 12px ' + ACCENT + '33' if drk else 'none'} !important;
+}}
+[data-testid="stSidebar"] .stButton > button[kind="primary"] p,
+[data-testid="stSidebar"] .stButton > button[kind="primary"] span,
+[data-testid="stSidebar"] .stButton > button[kind="primary"] * {{
+    color: {ACCENT} !important;
+    background: transparent !important;
 }}
 [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {{
-    background: {ACCENT}33 !important;
-    background-color: {ACCENT}33 !important;
+    background: {ACCENT}44 !important;
+    background-color: {ACCENT}44 !important;
     opacity: 1 !important;
 }}
 
@@ -243,18 +242,18 @@ html, body, .stApp {{
 .kpi-row {{ display: flex; gap: 14px; margin-bottom: 18px; }}
 .kpi {{
     flex: 1;
-    background: {p['card_bg']}{'cc' if drk else ''};
+    background: {p['card_bg']}{'cc' if drk else 'f8'};
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid {p['card_bdr']};
     border-radius: 16px;
     padding: 18px 20px 16px;
     position: relative; overflow: hidden;
-    box-shadow: {card_shadow};
+    box-shadow: {'0 4px 24px rgba(0,0,0,0.25)' if drk else '0 2px 12px rgba(0,0,0,0.07)'};
     transition: box-shadow 0.2s;
 }}
 .kpi:hover {{
-    box-shadow: {card_shadow_hv};
+    box-shadow: {'0 8px 32px rgba(0,0,0,0.35)' if drk else '0 4px 20px rgba(0,0,0,0.12)'};
 }}
 .kpi-accent {{
     position: absolute; top: 0; left: 0; right: 0;
@@ -278,14 +277,14 @@ html, body, .stApp {{
 
 /* ── Chart cards ── */
 .chart-card {{
-    background: {p['card_bg']}{'cc' if drk else ''};
+    background: {p['card_bg']}{'cc' if drk else 'f8'};
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid {p['card_bdr']};
     border-radius: 16px;
     padding: 20px 20px 14px;
     margin-bottom: 14px;
-    box-shadow: {chart_shadow};
+    box-shadow: {'0 4px 24px rgba(0,0,0,0.22)' if drk else '0 2px 12px rgba(0,0,0,0.06)'};
 }}
 .chart-title {{
     font-family: 'Syne', sans-serif;
@@ -326,11 +325,11 @@ html, body, .stApp {{
 
 /* ── Result box ── */
 .result-box {{
-    background: {p['card_bg']}{'cc' if drk else ''};
+    background: {p['card_bg']}{'cc' if drk else 'f8'};
     backdrop-filter: blur(20px);
     border: 1px solid {p['card_bdr']};
     border-radius: 16px; padding: 28px 24px;
-    box-shadow: {chart_shadow};
+    box-shadow: {'0 4px 24px rgba(0,0,0,0.22)' if drk else '0 2px 12px rgba(0,0,0,0.06)'};
 }}
 .result-box.hi {{ border-color: {ACCENT}66; }}
 .result-box.lo {{ border-color: #f9731666; }}
@@ -356,14 +355,38 @@ label, .stSelectbox label, .stSlider label, .stFileUploader label {{
     background: {p['card_bg']}88;
     border: 1px dashed {p['card_bdr']}; border-radius: 12px; padding: 4px;
 }}
-.stButton > button {{
+[data-testid="stFileUploader"] button {{
+    background: {p['card_bdr']} !important;
+    color: {p['text']} !important;
+    border-radius: 6px !important;
+}}
+/* Global buttons — exclude sidebar */
+:not([data-testid="stSidebar"]) .stButton > button {{
     background: {ACCENT} !important; color: white !important;
     border: none !important; border-radius: 9px !important;
     font-family: 'Inter', sans-serif !important;
     font-weight: 600 !important; padding: 10px 24px !important;
     transition: opacity 0.2s !important;
 }}
-.stButton > button:hover {{ opacity: 0.86 !important; transform: none !important; }}
+:not([data-testid="stSidebar"]) .stButton > button:hover {{
+    opacity: 0.86 !important; transform: none !important;
+}}
+
+/* Re-assert sidebar button colors AFTER global rule */
+[data-testid="stSidebar"] .stButton > button,
+[data-testid="stSidebar"] .stButton > button *  {{
+    color: {'#b0ccd6' if drk else '#1e4a5a'} !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-weight: 400 !important;
+    border: 1px solid {'transparent' if drk else 'rgba(30,74,90,0.25)'} !important;
+}}
+[data-testid="stSidebar"] .stButton > button[kind="primary"],
+[data-testid="stSidebar"] .stButton > button[kind="primary"] * {{
+    background: {ACCENT}{'33' if drk else '22'} !important;
+    color: {ACCENT} !important;
+    border-color: {ACCENT}55 !important;
+}}
 .stDownloadButton > button {{
     background: transparent !important;
     border: 1px solid {p['card_bdr']} !important; color: {p['text']} !important;
@@ -384,8 +407,9 @@ div[data-testid="stMarkdownContainer"] p {{ color: {p['text']}; }}
 </style>
 """, unsafe_allow_html=True)
 
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  CHART HELPER
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def mk_fig(w=5.5, h=3.2):
     p = pal()
     fig, ax = plt.subplots(figsize=(w, h))
@@ -406,15 +430,24 @@ def save_fig(fig):
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  NAV
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def nav():
     with st.sidebar:
+        # Logo
         st.markdown(f"""
         <div style="width:42px;height:42px;background:{ACCENT};border-radius:13px;
              display:flex;align-items:center;justify-content:center;
-             margin:4px auto 22px;font-size:20px;line-height:1;
+             margin:4px auto 22px;
              box-shadow:0 4px 16px {ACCENT}66;">
-          ⚠️
+          <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+               fill="none" stroke="white" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
         </div>
         """, unsafe_allow_html=True)
 
@@ -425,21 +458,17 @@ def nav():
                 st.session_state.page = label
                 st.rerun()
 
-        st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
-        st.markdown("---")
-        drk      = is_dark()
-        tog_icon = "☀" if drk else "🌑"
-        if st.button(tog_icon, key="dark_toggle",
-                     help="Light mode" if drk else "Dark mode"):
-            st.session_state.dark = not drk
-            st.rerun()
 
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  PAGE: DASHBOARD
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def page_dashboard():
     p   = pal()
     drk = is_dark()
     title_color = "#ffffff" if drk else p['text']
 
+    # ── Header + filter row
     hcol, fcol = st.columns([3, 1], gap="medium")
     with hcol:
         st.markdown('<div class="pg-title">Analytics Dashboard</div>', unsafe_allow_html=True)
@@ -454,6 +483,7 @@ def page_dashboard():
         st.markdown(f'<div class="chart-card" style="text-align:center;padding:52px;color:{p["sub"]};">No predictions yet — go to Classify to get started.</div>', unsafe_allow_html=True)
         return
 
+    # ── KPI row
     total   = len(df)
     avg_c   = df["confidence"].mean() * 100 if total else 0
     high_c  = int((df["confidence"] >= 0.80).sum()) if total else 0
@@ -484,6 +514,7 @@ def page_dashboard():
         </div>"""
     st.markdown(f'<div class="kpi-row">{kpi_html}</div>', unsafe_allow_html=True)
 
+    # ── Row 1: Line chart (trend) + Donut (class split)
     col1, col2 = st.columns([3, 2], gap="medium")
 
     with col1:
@@ -496,7 +527,7 @@ def page_dashboard():
         if len(df) > 1:
             df2 = df.copy()
             df2["timestamp"] = pd.to_datetime(df2["timestamp"])
-            df2["date"]      = df2["timestamp"].dt.date
+            df2["date"]      = df2["timestamp"].dt.strftime("%Y-%m-%d")
             ts = df2.groupby(["date","pred_class"]).size().unstack(fill_value=0).reindex(columns=CLASS_NAMES, fill_value=0)
             fig, ax, p2 = mk_fig(w=6.5, h=2.9)
             for c in CLASS_NAMES:
@@ -504,7 +535,8 @@ def page_dashboard():
                     ax.plot(ts.index, ts[c], label=c.title(),
                             color=CLS_HEX[c], linewidth=2, marker='o', markersize=4,
                             markerfacecolor='white', markeredgewidth=1.5)
-                    ax.fill_between(ts.index, ts[c], alpha=0.08, color=CLS_HEX[c])
+                    ax.fill_between(ts.index, ts[c],
+                                    alpha=0.08, color=CLS_HEX[c])
             ax.set_xlabel("Date", fontsize=8, fontfamily='monospace')
             ax.set_ylabel("Count", fontsize=8, fontfamily='monospace')
             plt.xticks(rotation=25, fontsize=7.5)
@@ -525,6 +557,7 @@ def page_dashboard():
         """, unsafe_allow_html=True)
 
         counts = df["pred_class"].value_counts().reindex(CLASS_NAMES, fill_value=0)
+        clrs   = [CLS_HEX[c] for c in counts.index]
         non_zero = counts[counts > 0]
 
         if non_zero.sum() > 0:
@@ -543,6 +576,7 @@ def page_dashboard():
                 at.set_fontsize(8)
                 at.set_color(p2['text'])
                 at.set_fontfamily('monospace')
+            # Legend
             patches = [mpatches.Patch(color=CLS_HEX[c], label=f"{c.title()}  {counts[c]}")
                        for c in non_zero.index]
             ax.legend(handles=patches, loc='lower center', bbox_to_anchor=(0.5,-0.22),
@@ -556,6 +590,7 @@ def page_dashboard():
 
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # ── Row 2: Bar chart (avg conf) + Recent activity table
     col3, col4 = st.columns([2, 3], gap="medium")
 
     with col3:
@@ -627,6 +662,7 @@ def page_dashboard():
 
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # ── Row 3: Confusion matrix + Model metrics (collapsible)
     with st.expander("Model Performance Details", expanded=False):
         c5, c6 = st.columns(2, gap="medium")
         with c5:
@@ -654,8 +690,9 @@ def page_dashboard():
         if os.path.exists(curve):
             st.image(curve, use_container_width=True)
 
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  PAGE: CLASSIFY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def page_classify(model):
     p   = pal()
     drk = is_dark()
@@ -709,8 +746,9 @@ def page_classify(model):
         elif not uploaded:
             st.markdown(f'<div class="result-box" style="text-align:center;padding:52px;color:{p["sub"]};">Results will appear here</div>', unsafe_allow_html=True)
 
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  PAGE: HISTORY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def page_history():
     p   = pal()
     drk = is_dark()
@@ -751,8 +789,9 @@ def page_history():
     st.dataframe(disp, use_container_width=True, hide_index=True)
     st.download_button("Export CSV", df.to_csv(index=False).encode(), "history.csv", "text/csv")
 
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  PAGE: ABOUT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def page_about():
     p   = pal()
     drk = is_dark()
@@ -797,13 +836,12 @@ def page_about():
         <div class="chart-card"><div class="chart-title">Tech Stack</div>
           <table style="width:100%;border-collapse:collapse;">{tech_rows}</table></div>""", unsafe_allow_html=True)
 
-
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  MAIN
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def main():
     init_db()
     if "page" not in st.session_state: st.session_state.page = "Dashboard"
-    if "dark" not in st.session_state: st.session_state.dark = True
-
     inject_css()
     nav()
 
