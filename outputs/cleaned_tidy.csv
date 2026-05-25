@@ -1,0 +1,460 @@
+hazard_type,year,families_affected,persons_affected,avg_persons_per_family,persons_yoy_change,had_impact
+African Swine Fever,2015,0,0,,0,False
+African Swine Fever,2016,0,0,,0,False
+African Swine Fever,2017,0,0,,0,False
+African Swine Fever,2018,0,0,,0,False
+African Swine Fever,2019,0,0,,0,False
+African Swine Fever,2020,0,0,,0,False
+African Swine Fever,2021,0,0,,0,False
+African Swine Fever,2022,0,0,,0,False
+African Swine Fever,2023,0,0,,0,False
+Bird Strikes,2015,0,0,,0,False
+Bird Strikes,2016,0,0,,0,False
+Bird Strikes,2017,0,0,,0,False
+Bird Strikes,2018,0,0,,0,False
+Bird Strikes,2019,0,0,,0,False
+Bird Strikes,2020,0,0,,0,False
+Bird Strikes,2021,0,0,,0,False
+Bird Strikes,2022,0,0,,0,False
+Bird Strikes,2023,0,0,,0,False
+Coastal Erosion,2015,0,0,,0,False
+Coastal Erosion,2016,0,0,,0,False
+Coastal Erosion,2017,0,0,,0,False
+Coastal Erosion,2018,0,0,,0,False
+Coastal Erosion,2019,0,0,,0,False
+Coastal Erosion,2020,0,0,,0,False
+Coastal Erosion,2021,0,0,,0,False
+Coastal Erosion,2022,0,0,,0,False
+Coastal Erosion,2023,0,0,,0,False
+Collapsed Soil,2015,0,0,,0,False
+Collapsed Soil,2016,0,0,,0,False
+Collapsed Soil,2017,0,0,,0,False
+Collapsed Soil,2018,0,0,,0,False
+Collapsed Soil,2019,0,0,,0,False
+Collapsed Soil,2020,0,0,,0,False
+Collapsed Soil,2021,0,0,,0,False
+Collapsed Soil,2022,0,0,,0,False
+Collapsed Soil,2023,0,0,,0,False
+Disease/Epidemic Outbreak,2015,0,0,,0,False
+Disease/Epidemic Outbreak,2016,0,0,,0,False
+Disease/Epidemic Outbreak,2017,0,0,,0,False
+Disease/Epidemic Outbreak,2018,0,0,,0,False
+Disease/Epidemic Outbreak,2019,0,0,,0,False
+Disease/Epidemic Outbreak,2020,0,0,,0,False
+Disease/Epidemic Outbreak,2021,0,0,,0,False
+Disease/Epidemic Outbreak,2022,0,0,,0,False
+Disease/Epidemic Outbreak,2023,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2015,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2016,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2017,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2018,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2019,500581,2432804,4.86,2432804,True
+Drought/ El Niño Phenomenon/ Dry Spell,2020,0,0,,-2432804,False
+Drought/ El Niño Phenomenon/ Dry Spell,2021,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2022,0,0,,0,False
+Drought/ El Niño Phenomenon/ Dry Spell,2023,0,0,,0,False
+Earthquake,2015,0,0,,0,False
+Earthquake,2016,0,0,,0,False
+Earthquake,2017,23552,108647,4.61,108647,True
+Earthquake,2018,0,0,,-108647,False
+Earthquake,2019,172738,813264,4.71,813264,True
+Earthquake,2020,1524,6474,4.25,-806790,True
+Earthquake,2021,50,183,3.66,-6291,True
+Earthquake,2022,191709,694085,3.62,693902,True
+Earthquake,2023,238407,957869,4.02,263784,True
+Easterlies,2015,0,0,,0,False
+Easterlies,2016,0,0,,0,False
+Easterlies,2017,0,0,,0,False
+Easterlies,2018,0,0,,0,False
+Easterlies,2019,0,0,,0,False
+Easterlies,2020,0,0,,0,False
+Easterlies,2021,0,0,,0,False
+Easterlies,2022,0,0,,0,False
+Easterlies,2023,0,0,,0,False
+Easterlies and ITCZ,2015,0,0,,0,False
+Easterlies and ITCZ,2016,0,0,,0,False
+Easterlies and ITCZ,2017,0,0,,0,False
+Easterlies and ITCZ,2018,0,0,,0,False
+Easterlies and ITCZ,2019,0,0,,0,False
+Easterlies and ITCZ,2020,0,0,,0,False
+Easterlies and ITCZ,2021,0,0,,0,False
+Easterlies and ITCZ,2022,0,0,,0,False
+Easterlies and ITCZ,2023,0,0,,0,False
+Fish Kill,2015,0,0,,0,False
+Fish Kill,2016,0,0,,0,False
+Fish Kill,2017,0,0,,0,False
+Fish Kill,2018,0,0,,0,False
+Fish Kill,2019,0,0,,0,False
+Fish Kill,2020,0,0,,0,False
+Fish Kill,2021,0,0,,0,False
+Fish Kill,2022,0,0,,0,False
+Fish Kill,2023,0,0,,0,False
+Flashfloods/Flooding,2015,0,0,,0,False
+Flashfloods/Flooding,2016,0,0,,0,False
+Flashfloods/Flooding,2017,0,0,,0,False
+Flashfloods/Flooding,2018,0,0,,0,False
+Flashfloods/Flooding,2019,240,610,2.54,610,True
+Flashfloods/Flooding,2020,0,0,,-610,False
+Flashfloods/Flooding,2021,0,0,,0,False
+Flashfloods/Flooding,2022,0,0,,0,False
+Flashfloods/Flooding,2023,0,0,,0,False
+Formation of Tension Cracks,2015,0,0,,0,False
+Formation of Tension Cracks,2016,0,0,,0,False
+Formation of Tension Cracks,2017,0,0,,0,False
+Formation of Tension Cracks,2018,0,0,,0,False
+Formation of Tension Cracks,2019,0,0,,0,False
+Formation of Tension Cracks,2020,0,0,,0,False
+Formation of Tension Cracks,2021,0,0,,0,False
+Formation of Tension Cracks,2022,0,0,,0,False
+Formation of Tension Cracks,2023,0,0,,0,False
+Hailstorm,2015,0,0,,0,False
+Hailstorm,2016,0,0,,0,False
+Hailstorm,2017,0,0,,0,False
+Hailstorm,2018,0,0,,0,False
+Hailstorm,2019,0,0,,0,False
+Hailstorm,2020,0,0,,0,False
+Hailstorm,2021,0,0,,0,False
+Hailstorm,2022,0,0,,0,False
+Hailstorm,2023,0,0,,0,False
+Heat Exhaustion,2015,0,0,,0,False
+Heat Exhaustion,2016,0,0,,0,False
+Heat Exhaustion,2017,0,0,,0,False
+Heat Exhaustion,2018,0,0,,0,False
+Heat Exhaustion,2019,0,0,,0,False
+Heat Exhaustion,2020,0,0,,0,False
+Heat Exhaustion,2021,0,0,,0,False
+Heat Exhaustion,2022,0,0,,0,False
+Heat Exhaustion,2023,0,0,,0,False
+Hurricane,2015,0,0,,0,False
+Hurricane,2016,0,0,,0,False
+Hurricane,2017,0,0,,0,False
+Hurricane,2018,0,0,,0,False
+Hurricane,2019,0,0,,0,False
+Hurricane,2020,0,0,,0,False
+Hurricane,2021,0,0,,0,False
+Hurricane,2022,0,0,,0,False
+Hurricane,2023,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2015,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2016,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2017,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2018,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2019,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2020,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2021,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2022,0,0,,0,False
+ITCZ and SWM / Localized Thunderstorm,2023,0,0,,0,False
+"ITCZ, SWM, and LPA",2015,0,0,,0,False
+"ITCZ, SWM, and LPA",2016,0,0,,0,False
+"ITCZ, SWM, and LPA",2017,0,0,,0,False
+"ITCZ, SWM, and LPA",2018,0,0,,0,False
+"ITCZ, SWM, and LPA",2019,0,0,,0,False
+"ITCZ, SWM, and LPA",2020,0,0,,0,False
+"ITCZ, SWM, and LPA",2021,0,0,,0,False
+"ITCZ, SWM, and LPA",2022,0,0,,0,False
+"ITCZ, SWM, and LPA",2023,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2015,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2016,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2017,4710,23520,4.99,23520,True
+Inter Tropical Convergence Zone (ITCZ),2018,0,0,,-23520,False
+Inter Tropical Convergence Zone (ITCZ),2019,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2020,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2021,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2022,0,0,,0,False
+Inter Tropical Convergence Zone (ITCZ),2023,0,0,,0,False
+LPA and ITCZ,2015,0,0,,0,False
+LPA and ITCZ,2016,0,0,,0,False
+LPA and ITCZ,2017,0,0,,0,False
+LPA and ITCZ,2018,0,0,,0,False
+LPA and ITCZ,2019,0,0,,0,False
+LPA and ITCZ,2020,0,0,,0,False
+LPA and ITCZ,2021,0,0,,0,False
+LPA and ITCZ,2022,0,0,,0,False
+LPA and ITCZ,2023,0,0,,0,False
+LPA and SWM,2015,0,0,,0,False
+LPA and SWM,2016,0,0,,0,False
+LPA and SWM,2017,0,0,,0,False
+LPA and SWM,2018,0,0,,0,False
+LPA and SWM,2019,0,0,,0,False
+LPA and SWM,2020,0,0,,0,False
+LPA and SWM,2021,0,0,,0,False
+LPA and SWM,2022,0,0,,0,False
+LPA and SWM,2023,0,0,,0,False
+LPA and Shearline,2015,0,0,,0,False
+LPA and Shearline,2016,0,0,,0,False
+LPA and Shearline,2017,219624,1005073,4.58,1005073,True
+LPA and Shearline,2018,39210,179550,4.58,-825523,True
+LPA and Shearline,2019,0,0,,-179550,False
+LPA and Shearline,2020,0,0,,0,False
+LPA and Shearline,2021,0,0,,0,False
+LPA and Shearline,2022,0,0,,0,False
+LPA and Shearline,2023,285690,1157487,4.05,1157487,True
+"LPA, Northeast Monsoon, and Shearline",2015,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2016,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2017,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2018,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2019,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2020,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2021,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2022,0,0,,0,False
+"LPA, Northeast Monsoon, and Shearline",2023,519781,2143347,4.12,2143347,True
+Land Mass Displacement,2015,0,0,,0,False
+Land Mass Displacement,2016,0,0,,0,False
+Land Mass Displacement,2017,0,0,,0,False
+Land Mass Displacement,2018,0,0,,0,False
+Land Mass Displacement,2019,0,0,,0,False
+Land Mass Displacement,2020,0,0,,0,False
+Land Mass Displacement,2021,0,0,,0,False
+Land Mass Displacement,2022,0,0,,0,False
+Land Mass Displacement,2023,0,0,,0,False
+Landslides,2015,0,0,,0,False
+Landslides,2016,0,0,,0,False
+Landslides,2017,0,0,,0,False
+Landslides,2018,1972,8252,4.18,8252,True
+Landslides,2019,0,0,,-8252,False
+Landslides,2020,0,0,,0,False
+Landslides,2021,0,0,,0,False
+Landslides,2022,0,0,,0,False
+Landslides,2023,0,0,,0,False
+Lightning/Thunderstorm,2015,0,0,,0,False
+Lightning/Thunderstorm,2016,0,0,,0,False
+Lightning/Thunderstorm,2017,0,0,,0,False
+Lightning/Thunderstorm,2018,0,0,,0,False
+Lightning/Thunderstorm,2019,0,0,,0,False
+Lightning/Thunderstorm,2020,0,0,,0,False
+Lightning/Thunderstorm,2021,0,0,,0,False
+Lightning/Thunderstorm,2022,0,0,,0,False
+Lightning/Thunderstorm,2023,0,0,,0,False
+Liquefaction,2015,0,0,,0,False
+Liquefaction,2016,0,0,,0,False
+Liquefaction,2017,0,0,,0,False
+Liquefaction,2018,0,0,,0,False
+Liquefaction,2019,0,0,,0,False
+Liquefaction,2020,0,0,,0,False
+Liquefaction,2021,0,0,,0,False
+Liquefaction,2022,0,0,,0,False
+Liquefaction,2023,0,0,,0,False
+Low Pressure Area (LPA),2015,0,0,,0,False
+Low Pressure Area (LPA),2016,0,0,,0,False
+Low Pressure Area (LPA),2017,0,0,,0,False
+Low Pressure Area (LPA),2018,0,0,,0,False
+Low Pressure Area (LPA),2019,0,0,,0,False
+Low Pressure Area (LPA),2020,0,0,,0,False
+Low Pressure Area (LPA),2021,0,0,,0,False
+Low Pressure Area (LPA),2022,0,0,,0,False
+Low Pressure Area (LPA),2023,73653,273577,3.71,273577,True
+Maritime Incident (due to natural causes),2015,0,0,,0,False
+Maritime Incident (due to natural causes),2016,0,0,,0,False
+Maritime Incident (due to natural causes),2017,0,0,,0,False
+Maritime Incident (due to natural causes),2018,0,0,,0,False
+Maritime Incident (due to natural causes),2019,0,0,,0,False
+Maritime Incident (due to natural causes),2020,0,0,,0,False
+Maritime Incident (due to natural causes),2021,0,0,,0,False
+Maritime Incident (due to natural causes),2022,0,0,,0,False
+Maritime Incident (due to natural causes),2023,0,0,,0,False
+Moonsoon Surge,2015,0,0,,0,False
+Moonsoon Surge,2016,0,0,,0,False
+Moonsoon Surge,2017,0,0,,0,False
+Moonsoon Surge,2018,0,0,,0,False
+Moonsoon Surge,2019,0,0,,0,False
+Moonsoon Surge,2020,0,0,,0,False
+Moonsoon Surge,2021,0,0,,0,False
+Moonsoon Surge,2022,0,0,,0,False
+Moonsoon Surge,2023,0,0,,0,False
+Moonsoon Trough,2015,0,0,,0,False
+Moonsoon Trough,2016,0,0,,0,False
+Moonsoon Trough,2017,0,0,,0,False
+Moonsoon Trough,2018,0,0,,0,False
+Moonsoon Trough,2019,0,0,,0,False
+Moonsoon Trough,2020,0,0,,0,False
+Moonsoon Trough,2021,0,0,,0,False
+Moonsoon Trough,2022,0,0,,0,False
+Moonsoon Trough,2023,0,0,,0,False
+Northeast Monsoon,2015,0,0,,0,False
+Northeast Monsoon,2016,0,0,,0,False
+Northeast Monsoon,2017,18552,72607,3.91,72607,True
+Northeast Monsoon,2018,0,0,,-72607,False
+Northeast Monsoon,2019,0,0,,0,False
+Northeast Monsoon,2020,0,0,,0,False
+Northeast Monsoon,2021,0,0,,0,False
+Northeast Monsoon,2022,0,0,,0,False
+Northeast Monsoon,2023,0,0,,0,False
+Others,2015,0,0,,0,False
+Others,2016,0,0,,0,False
+Others,2017,0,0,,0,False
+Others,2018,0,0,,0,False
+Others,2019,0,0,,0,False
+Others,2020,0,0,,0,False
+Others,2021,0,0,,0,False
+Others,2022,0,0,,0,False
+Others,2023,0,0,,0,False
+Pest Infestation,2015,0,0,,0,False
+Pest Infestation,2016,0,0,,0,False
+Pest Infestation,2017,0,0,,0,False
+Pest Infestation,2018,0,0,,0,False
+Pest Infestation,2019,0,0,,0,False
+Pest Infestation,2020,0,0,,0,False
+Pest Infestation,2021,0,0,,0,False
+Pest Infestation,2022,0,0,,0,False
+Pest Infestation,2023,0,0,,0,False
+Rain,2015,0,0,,0,False
+Rain,2016,0,0,,0,False
+Rain,2017,92647,454934,4.91,454934,True
+Rain,2018,0,0,,-454934,False
+Rain,2019,0,0,,0,False
+Rain,2020,0,0,,0,False
+Rain,2021,0,0,,0,False
+Rain,2022,0,0,,0,False
+Rain,2023,0,0,,0,False
+Rockslide/ Rock Fall,2015,0,0,,0,False
+Rockslide/ Rock Fall,2016,0,0,,0,False
+Rockslide/ Rock Fall,2017,0,0,,0,False
+Rockslide/ Rock Fall,2018,0,0,,0,False
+Rockslide/ Rock Fall,2019,0,0,,0,False
+Rockslide/ Rock Fall,2020,0,0,,0,False
+Rockslide/ Rock Fall,2021,0,0,,0,False
+Rockslide/ Rock Fall,2022,0,0,,0,False
+Rockslide/ Rock Fall,2023,0,0,,0,False
+SWM and Localized Thunderstorm,2015,0,0,,0,False
+SWM and Localized Thunderstorm,2016,0,0,,0,False
+SWM and Localized Thunderstorm,2017,0,0,,0,False
+SWM and Localized Thunderstorm,2018,0,0,,0,False
+SWM and Localized Thunderstorm,2019,0,0,,0,False
+SWM and Localized Thunderstorm,2020,0,0,,0,False
+SWM and Localized Thunderstorm,2021,0,0,,0,False
+SWM and Localized Thunderstorm,2022,0,0,,0,False
+SWM and Localized Thunderstorm,2023,0,0,,0,False
+Sea Swelling,2015,0,0,,0,False
+Sea Swelling,2016,0,0,,0,False
+Sea Swelling,2017,0,0,,0,False
+Sea Swelling,2018,0,0,,0,False
+Sea Swelling,2019,0,0,,0,False
+Sea Swelling,2020,0,0,,0,False
+Sea Swelling,2021,0,0,,0,False
+Sea Swelling,2022,0,0,,0,False
+Sea Swelling,2023,0,0,,0,False
+Shearline,2015,0,0,,0,False
+Shearline,2016,0,0,,0,False
+Shearline,2017,47150,182023,3.86,182023,True
+Shearline,2018,0,0,,-182023,False
+Shearline,2019,19486,93862,4.82,93862,True
+Shearline,2020,0,0,,-93862,False
+Shearline,2021,0,0,,0,False
+Shearline,2022,185826,743956,4.0,743956,True
+Shearline,2023,0,0,,-743956,False
+Sinkhole,2015,0,0,,0,False
+Sinkhole,2016,0,0,,0,False
+Sinkhole,2017,0,0,,0,False
+Sinkhole,2018,0,0,,0,False
+Sinkhole,2019,0,0,,0,False
+Sinkhole,2020,0,0,,0,False
+Sinkhole,2021,0,0,,0,False
+Sinkhole,2022,0,0,,0,False
+Sinkhole,2023,0,0,,0,False
+Southwest Monsoon (SWM),2015,0,0,,0,False
+Southwest Monsoon (SWM),2016,281185,1285150,4.57,1285150,True
+Southwest Monsoon (SWM),2017,0,0,,-1285150,False
+Southwest Monsoon (SWM),2018,0,0,,0,False
+Southwest Monsoon (SWM),2019,50183,210090,4.19,210090,True
+Southwest Monsoon (SWM),2020,0,0,,-210090,False
+Southwest Monsoon (SWM),2021,312605,1222241,3.91,1222241,True
+Southwest Monsoon (SWM),2022,0,0,,-1222241,False
+Southwest Monsoon (SWM),2023,0,0,,0,False
+Storm Surge,2015,0,0,,0,False
+Storm Surge,2016,0,0,,0,False
+Storm Surge,2017,0,0,,0,False
+Storm Surge,2018,0,0,,0,False
+Storm Surge,2019,0,0,,0,False
+Storm Surge,2020,0,0,,0,False
+Storm Surge,2021,0,0,,0,False
+Storm Surge,2022,0,0,,0,False
+Storm Surge,2023,0,0,,0,False
+TEFS and Northeast Monsoon,2015,0,0,,0,False
+TEFS and Northeast Monsoon,2016,0,0,,0,False
+TEFS and Northeast Monsoon,2017,0,0,,0,False
+TEFS and Northeast Monsoon,2018,0,0,,0,False
+TEFS and Northeast Monsoon,2019,0,0,,0,False
+TEFS and Northeast Monsoon,2020,0,0,,0,False
+TEFS and Northeast Monsoon,2021,0,0,,0,False
+TEFS and Northeast Monsoon,2022,0,0,,0,False
+TEFS and Northeast Monsoon,2023,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2015,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2016,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2017,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2018,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2019,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2020,18075,85660,4.74,85660,True
+Tail-End of a Frontal System (TEFS),2021,0,0,,-85660,False
+Tail-End of a Frontal System (TEFS),2022,0,0,,0,False
+Tail-End of a Frontal System (TEFS),2023,0,0,,0,False
+Tornado,2015,0,0,,0,False
+Tornado,2016,0,0,,0,False
+Tornado,2017,0,0,,0,False
+Tornado,2018,0,0,,0,False
+Tornado,2019,0,0,,0,False
+Tornado,2020,0,0,,0,False
+Tornado,2021,0,0,,0,False
+Tornado,2022,0,0,,0,False
+Tornado,2023,0,0,,0,False
+Tropical Cyclones,2015,1174159,5096031,4.34,0,True
+Tropical Cyclones,2016,1289706,5752708,4.46,656677,True
+Tropical Cyclones,2017,682535,3013193,4.41,-2739515,True
+Tropical Cyclones,2018,2463822,10170749,4.13,7157556,True
+Tropical Cyclones,2019,1749197,7273934,4.16,-2896815,True
+Tropical Cyclones,2020,2213402,9017941,4.07,1744007,True
+Tropical Cyclones,2021,3535372,12765120,3.61,3747179,True
+Tropical Cyclones,2022,2658801,10251149,3.86,-2513971,True
+Tropical Cyclones,2023,1940983,7493199,3.86,-2757950,True
+Trough of LPA,2015,0,0,,0,False
+Trough of LPA,2016,0,0,,0,False
+Trough of LPA,2017,0,0,,0,False
+Trough of LPA,2018,0,0,,0,False
+Trough of LPA,2019,3383,10996,3.25,10996,True
+Trough of LPA,2020,0,0,,-10996,False
+Trough of LPA,2021,0,0,,0,False
+Trough of LPA,2022,0,0,,0,False
+Trough of LPA,2023,0,0,,0,False
+Trough of LPA and Easterlies,2015,0,0,,0,False
+Trough of LPA and Easterlies,2016,0,0,,0,False
+Trough of LPA and Easterlies,2017,0,0,,0,False
+Trough of LPA and Easterlies,2018,0,0,,0,False
+Trough of LPA and Easterlies,2019,0,0,,0,False
+Trough of LPA and Easterlies,2020,0,0,,0,False
+Trough of LPA and Easterlies,2021,0,0,,0,False
+Trough of LPA and Easterlies,2022,0,0,,0,False
+Trough of LPA and Easterlies,2023,0,0,,0,False
+Volcanic Activity/ Volcanic Smog,2015,0,0,,0,False
+Volcanic Activity/ Volcanic Smog,2016,0,0,,0,False
+Volcanic Activity/ Volcanic Smog,2017,0,0,,0,False
+Volcanic Activity/ Volcanic Smog,2018,23705,90742,3.83,90742,True
+Volcanic Activity/ Volcanic Smog,2019,0,0,,-90742,False
+Volcanic Activity/ Volcanic Smog,2020,103358,417230,4.04,417230,True
+Volcanic Activity/ Volcanic Smog,2021,6262,22433,3.58,-394797,True
+Volcanic Activity/ Volcanic Smog,2022,3300,11403,3.46,-11030,True
+Volcanic Activity/ Volcanic Smog,2023,9876,38396,3.89,26993,True
+Wave Action,2015,0,0,,0,False
+Wave Action,2016,0,0,,0,False
+Wave Action,2017,0,0,,0,False
+Wave Action,2018,0,0,,0,False
+Wave Action,2019,0,0,,0,False
+Wave Action,2020,0,0,,0,False
+Wave Action,2021,0,0,,0,False
+Wave Action,2022,0,0,,0,False
+Wave Action,2023,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2015,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2016,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2017,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2018,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2019,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2020,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2021,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2022,0,0,,0,False
+Wildfire/Bushfire/Forest Fire,2023,0,0,,0,False
+Wind,2015,0,0,,0,False
+Wind,2016,0,0,,0,False
+Wind,2017,0,0,,0,False
+Wind,2018,0,0,,0,False
+Wind,2019,0,0,,0,False
+Wind,2020,0,0,,0,False
+Wind,2021,0,0,,0,False
+Wind,2022,0,0,,0,False
+Wind,2023,0,0,,0,False

@@ -1,136 +1,231 @@
-"""
-AI Disaster Classification System
-Run: streamlit run app.py
-"""
-
-import os, json, sqlite3, datetime
+import os, json, sqlite3, datetime, warnings
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from tensorflow.keras.applications.efficientnet import preprocess_input
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 from PIL import Image
+warnings.filterwarnings("ignore")
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 #  CONFIG
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLASS_NAMES = sorted(["earthquake", "fire", "flood", "landslide", "normal"])
-
-# Per-class palette — works on both dark and light backgrounds
 CLS_HEX = {
-    "earthquake": "#F63E31",
-    "fire":       "#FF8C42",
-    "flood":      "#3B9EBF",
-    "landslide":  "#9B8EA0",
-    "normal":     "#52B788",
+    "earthquake": "#F63E31", "fire": "#FF8C42",
+    "flood":      "#3B9EBF", "landslide": "#9B8EA0", "normal": "#52B788",
 }
 ACCENT = "#F63E31"
+CYAN   = "#3B9EBF"
+GREEN  = "#52B788"
+ORANGE = "#FF8C42"
+PURPLE = "#9B8EA0"
 
-# Dark palette
-DARK = dict(
-    bg       = "#0b1820",
-    side_bg  = "#0d1f28",
-    card_bg  = "#0f2632",
-    card_bdr = "#1a3d50",
-    text     = "#dce8ed",
-    sub      = "#5f8a9a",
-    chart_bg = "#0b1820",
-    grid     = "#132533",
-    blob1    = "rgba(15,38,50,0.9)",
-    blob2    = "rgba(246,62,49,0.08)",
+PAL = dict(
+    bg="#0b1820",       side_bg="#0d1f28",  card_bg="#0f2632",
+    card_bdr="#1a3d50", text="#dce8ed",     sub="#5f8a9a",
+    chart_bg="#0b1820", grid="#132533",
+    blob1="rgba(246,62,49,0.07)", blob2="rgba(59,158,191,0.07)",
 )
+
 MODEL_PATH = os.path.join("models", "disaster_classifier.keras")
 DB_PATH    = "predictions.db"
 EVAL_DIR   = "eval"
 IMG_SIZE   = 224
+TIDY_CSV   = os.path.join("outputs", "cleaned_tidy.csv")
+WIDE_CSV   = os.path.join("outputs", "cleaned_wide.csv")
+SUMM_CSV   = os.path.join("outputs", "summary_by_hazard.csv")
 
 PAGES = [
-    ("Dashboard", "▦"),
-    ("Classify",  "⬆"),
-    ("History",   "◷"),
-    ("About",     "ℹ"),
+    ("Executive Dashboard", "executive"),
+    ("Disaster Analytics",  "analytics"),
+    ("Visualizations",      "visuals"),
+    ("AI Classifier",       "classify"),
+    ("Prediction History",  "history"),
+    ("Dataset Explorer",    "explorer"),
 ]
 
-def pal():
-    return DARK
+PAGE_ICONS = {
+    "executive": "🏠",   
+    "analytics": "📊",   
+    "visuals":   "📈",   
+    "classify":  "🔍",   
+    "history":   "🕐",   
+    "explorer":  "🗄️",   
+}
 
-def is_dark():
-    return True
+PAGE_SVGS = {
+    "executive": """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>""",
+    "analytics": """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6"  y1="20" x2="6"  y2="14"/></svg>""",
+    "visuals":   """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        <line x1="2" y1="12" x2="22" y2="12"/></svg>""",
+    "classify":  """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 16 12 12 8 16"/>
+        <line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>""",
+    "history":   """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/></svg>""",
+    "explorer":  """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>""",
+}
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  PAGE CONFIG
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  PAGE CONFIG  
 st.set_page_config(
-    page_title="Disaster AI",
+    page_title="Disaster Intelligence Platform",
     page_icon="🚨",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  DATA LOADERS
+@st.cache_data
+def load_tidy():
+    if not os.path.exists(TIDY_CSV):
+        return None
+    df = pd.read_csv(TIDY_CSV)
+    df = df[df["persons_affected"] > 0].copy()
+    return df
+
+@st.cache_data
+def load_summary():
+    if not os.path.exists(SUMM_CSV):
+        return None
+    return pd.read_csv(SUMM_CSV)
+
+@st.cache_data
+def load_wide():
+    if not os.path.exists(WIDE_CSV):
+        return None
+    return pd.read_csv(WIDE_CSV)
+
+@st.cache_data
+def derived_data():
+    tidy = load_tidy()
+    if tidy is None:
+        return None, None, None, None
+    yearly = tidy.groupby("year")[["families_affected", "persons_affected"]].sum().reset_index()
+    summary = (
+        tidy.groupby("hazard_type")["persons_affected"]
+        .agg(
+            total_persons="sum",
+            max_year_persons="max",
+            years_with_impact=lambda x: (x > 0).sum(),
+        )
+        .sort_values("total_persons", ascending=False)
+        .reset_index()
+    )
+    heatmap_df = tidy.pivot_table(
+        index="hazard_type", columns="year",
+        values="persons_affected", aggfunc="sum", fill_value=0,
+    )
+    return tidy, yearly, summary, heatmap_df
+
 #  DATABASE
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""CREATE TABLE IF NOT EXISTS predictions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         image_name TEXT, pred_class TEXT,
         confidence REAL, timestamp TEXT)""")
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 def save_prediction(name, cls, conf):
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("INSERT INTO predictions VALUES (NULL,?,?,?,?)",
-        (name, cls, round(conf, 4),
-         datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-    conn.commit(); conn.close()
+    conn.execute(
+        "INSERT INTO predictions VALUES (NULL,?,?,?,?)",
+        (name, cls, round(conf, 4), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    )
+    conn.commit()
+    conn.close()
 
 def load_predictions(cls_filter="All", min_conf=0.0):
     conn = sqlite3.connect(DB_PATH)
     q, params = "SELECT * FROM predictions WHERE confidence >= ?", [min_conf]
     if cls_filter != "All":
-        q += " AND pred_class = ?"; params.append(cls_filter)
+        q += " AND pred_class = ?"
+        params.append(cls_filter)
     q += " ORDER BY id DESC"
     df = pd.read_sql(q, conn, params=params)
     conn.close()
     return df
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  MODEL
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 @st.cache_resource
 def load_model():
-    if not os.path.exists(MODEL_PATH): return None
-    return tf.keras.models.load_model(MODEL_PATH)
+    if not os.path.exists(MODEL_PATH):
+        return None
+    try:
+        import tensorflow as tf
+        return tf.keras.models.load_model(MODEL_PATH)
+    except Exception:
+        return None
 
 def run_predict(model, img):
+    import tensorflow as tf
+    from tensorflow.keras.applications.efficientnet import preprocess_input
     arr = np.array(img.convert("RGB").resize((IMG_SIZE, IMG_SIZE)), dtype=np.float32)
     arr = preprocess_input(np.expand_dims(arr, 0))
     probs = model.predict(arr, verbose=0)[0]
-    idx   = int(np.argmax(probs))
+    idx = int(np.argmax(probs))
     return CLASS_NAMES[idx], float(probs[idx]), probs
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  PLOTLY THEME
+PLOTLY_LAYOUT = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter, DM Mono, monospace", color=PAL["text"], size=11),
+    xaxis=dict(gridcolor=PAL["grid"], linecolor=PAL["card_bdr"], tickfont=dict(color=PAL["sub"], size=10)),
+    yaxis=dict(gridcolor=PAL["grid"], linecolor=PAL["card_bdr"], tickfont=dict(color=PAL["sub"], size=10)),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=PAL["text"], size=10)),
+    margin=dict(l=10, r=10, t=40, b=10),
+    hoverlabel=dict(bgcolor=PAL["card_bg"], font_color=PAL["text"], bordercolor=PAL["card_bdr"]),
+)
+
+def apply_theme(fig):
+    fig.update_layout(**PLOTLY_LAYOUT)
+    return fig
+
+
 #  CSS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def inject_css():
-    p   = pal()
-    drk = is_dark()
-    title_color = "#ffffff" if drk else p['text']
+    bg       = PAL["bg"]
+    side_bg  = PAL["side_bg"]
+    card_bg  = PAL["card_bg"]
+    card_bdr = PAL["card_bdr"]
+    text     = PAL["text"]
+    sub      = PAL["sub"]
+    grid     = PAL["grid"]
+    blob1    = PAL["blob1"]
+    blob2    = PAL["blob2"]
 
     st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
 
-*, *::before, *::after {{ box-sizing: border-box; margin:0; padding:0; }}
+*, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
 html, body, .stApp {{
-    background: {p['bg']} !important;
-    color: {p['text']} !important;
+    background: {bg} !important;
+    color: {text} !important;
     font-family: 'Inter', sans-serif;
 }}
 
@@ -138,11 +233,11 @@ html, body, .stApp {{
 .stApp::before {{
     content: '';
     position: fixed; inset: 0; z-index: -2;
-    background-color: {p['bg']};
+    background-color: {bg};
     background-image:
-        radial-gradient(ellipse 80% 60% at 5% 10%,  {p['blob1']} 0%, transparent 60%),
-        radial-gradient(ellipse 55% 45% at 95% 90%,  {p['blob2']} 0%, transparent 55%),
-        radial-gradient(ellipse 40% 40% at 50% 50%, {'rgba(59,158,191,0.06)' if drk else 'rgba(59,158,191,0.04)'} 0%, transparent 70%);
+        radial-gradient(ellipse 80% 60% at 5%  10%, {blob1} 0%, transparent 60%),
+        radial-gradient(ellipse 55% 45% at 95% 90%, {blob2} 0%, transparent 55%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(59,158,191,0.06) 0%, transparent 70%);
 }}
 
 [data-testid="stHeader"], footer {{ display: none !important; }}
@@ -150,707 +245,1056 @@ html, body, .stApp {{
 
 /* ── Sidebar icon rail ── */
 [data-testid="stSidebar"] {{
-    min-width: 70px !important; max-width: 70px !important;
-    background: {p['side_bg']} !important;
+    min-width: 72px !important;
+    max-width: 72px !important;
+    background: {side_bg} !important;
     backdrop-filter: blur(28px) !important;
     -webkit-backdrop-filter: blur(28px) !important;
-    border-right: 1px solid {p['card_bdr']} !important;
-    box-shadow: {'2px 0 20px rgba(0,0,0,0.3)' if drk else '3px 0 16px rgba(0,32,48,0.18)'} !important;
+    border-right: 1px solid {card_bdr} !important;
+    box-shadow: 2px 0 20px rgba(0,0,0,0.35) !important;
 }}
-[data-testid="stSidebarContent"] {{
-    padding: 16px 0 !important;
-    display: flex; flex-direction: column;
-    align-items: center; gap: 3px;
-}}
-[data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
-[data-testid="stSidebar"] .stButton {{ width: 46px !important; margin: 1px auto !important; }}
 
-/* ── DARK MODE: Inactive nav button ── */
-[data-testid="stSidebar"] .stButton > button,
-[data-testid="stSidebar"] .stButton > button:focus,
-[data-testid="stSidebar"] .stButton > button:active,
-[data-testid="stSidebar"] .stButton > button:visited,
-[data-testid="stSidebar"] .stButton > button:focus:not(:active) {{
-    width: 46px !important; height: 46px !important;
-    padding: 0 !important; border-radius: 13px !important;
-    font-size: 17px !important;
+[data-testid="stSidebarContent"] {{
+    padding: 14px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+}}
+
+[data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
+
+/* ── Sidebar logo container ── */
+.sidebar-logo {{
+    width: 44px; height: 44px;
+    background: {ACCENT};
+    border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 4px auto 20px;
+    box-shadow: 0 4px 16px {ACCENT}66;
+    flex-shrink: 0;
+}}
+
+/* ── Sidebar nav buttons ── */
+[data-testid="stSidebar"] .stButton {{
+    width: 48px !important;
+    margin: 2px auto !important;
+}}
+
+[data-testid="stSidebar"] .stButton > button {{
+    width: 48px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    border-radius: 13px !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
     background: transparent !important;
     background-color: transparent !important;
-    color: {'#b0ccd6' if drk else '#1e4a5a'} !important;
-    border: 1px solid {'transparent' if drk else 'rgba(30,74,90,0.25)'} !important;
+    color: #ffffff !important;
+    border: 1px solid transparent !important;
     box-shadow: none !important;
     outline: none !important;
     transition: all 0.15s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0.6 !important;
 }}
+
+/* Force icon color on every possible child element */
 [data-testid="stSidebar"] .stButton > button p,
 [data-testid="stSidebar"] .stButton > button span,
 [data-testid="stSidebar"] .stButton > button div,
 [data-testid="stSidebar"] .stButton > button * {{
-    color: {'#b0ccd6' if drk else '#ffffff'} !important;
+    color: #ffffff !important;
     background: transparent !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
 }}
 
-/* ── Hover state ── */
-[data-testid="stSidebar"] .stButton > button:hover,
+[data-testid="stSidebar"] .stButton > button:hover {{
+    background: rgba(255,255,255,0.10) !important;
+    background-color: rgba(255,255,255,0.10) !important;
+    color: #ffffff !important;
+    border-color: rgba(255,255,255,0.15) !important;
+    opacity: 1 !important;
+}}
+
 [data-testid="stSidebar"] .stButton > button:hover p,
 [data-testid="stSidebar"] .stButton > button:hover span,
 [data-testid="stSidebar"] .stButton > button:hover * {{
-    background: {'rgba(255,255,255,0.10)' if drk else 'rgba(246,62,49,0.18)'} !important;
-    background-color: {'rgba(255,255,255,0.10)' if drk else 'rgba(246,62,49,0.18)'} !important;
-    color: {'#ffffff' if drk else '#F63E31'} !important;
-    border-color: {'rgba(255,255,255,0.12)' if drk else 'rgba(246,62,49,0.35)'} !important;
-    transform: none !important; opacity: 1 !important;
+    color: #ffffff !important;
 }}
 
-/* ── Active / current page button ── */
-[data-testid="stSidebar"] .stButton > button[kind="primary"],
-[data-testid="stSidebar"] .stButton > button[kind="primary"]:focus,
-[data-testid="stSidebar"] .stButton > button[kind="primary"]:active,
-[data-testid="stSidebar"] .stButton > button[kind="primary"]:focus:not(:active) {{
-    background: {ACCENT}{'33' if drk else '22'} !important;
-    background-color: {ACCENT}{'33' if drk else '22'} !important;
+/* Active / primary nav button */
+[data-testid="stSidebar"] .stButton > button[kind="primary"] {{
+    background: {ACCENT}33 !important;
+    background-color: {ACCENT}33 !important;
     color: {ACCENT} !important;
-    border-color: {ACCENT}{'66' if drk else '55'} !important;
-    box-shadow: {'0 0 12px ' + ACCENT + '33' if drk else 'none'} !important;
+    border-color: {ACCENT}66 !important;
+    box-shadow: 0 0 12px {ACCENT}33 !important;
+    opacity: 1 !important;
 }}
+
 [data-testid="stSidebar"] .stButton > button[kind="primary"] p,
 [data-testid="stSidebar"] .stButton > button[kind="primary"] span,
 [data-testid="stSidebar"] .stButton > button[kind="primary"] * {{
     color: {ACCENT} !important;
-    background: transparent !important;
 }}
+
 [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {{
     background: {ACCENT}44 !important;
     background-color: {ACCENT}44 !important;
     opacity: 1 !important;
 }}
 
-/* ── Page title ── */
+/* ── Typography ── */
 .pg-title {{
     font-family: 'Syne', sans-serif;
-    font-size: 1.5rem; font-weight: 800;
-    color: {title_color}; letter-spacing: -0.02em;
-    line-height: 1.2;
+    font-size: 2.50rem; font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em; line-height: 1.25;
 }}
 .pg-sub {{
     font-family: 'DM Mono', monospace;
-    font-size: 0.7rem; color: {p['sub']};
-    letter-spacing: 0.05em; margin-top: 2px; margin-bottom: 22px;
+    font-size: 0.7rem; color: {sub};
+    letter-spacing: 0.05em;
+    margin-top: 2px; margin-bottom: 22px;
+}}
+.section-title {{
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem; font-weight: 700;
+    color: #fff; margin-bottom: 4px;
+}}
+.section-sub {{
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem; color: {sub};
+    letter-spacing: 0.05em; margin-bottom: 16px;
 }}
 
-/* ── KPI cards ── */
-.kpi-row {{ display: flex; gap: 14px; margin-bottom: 18px; }}
+/* ── KPI Cards ── */
+.kpi-row {{ display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }}
 .kpi {{
-    flex: 1;
-    background: {p['card_bg']}{'cc' if drk else 'f8'};
+    flex: 1; min-width: 140px;
+    background: {card_bg}cc;
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid {p['card_bdr']};
-    border-radius: 16px;
-    padding: 18px 20px 16px;
+    border: 1px solid {card_bdr};
+    border-radius: 16px; padding: 20px 22px 18px;
     position: relative; overflow: hidden;
-    box-shadow: {'0 4px 24px rgba(0,0,0,0.25)' if drk else '0 2px 12px rgba(0,0,0,0.07)'};
-    transition: box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+    transition: box-shadow 0.2s, transform 0.2s;
 }}
-.kpi:hover {{
-    box-shadow: {'0 8px 32px rgba(0,0,0,0.35)' if drk else '0 4px 20px rgba(0,0,0,0.12)'};
-}}
+.kpi:hover {{ box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(-2px); }}
 .kpi-accent {{
     position: absolute; top: 0; left: 0; right: 0;
     height: 3px; border-radius: 16px 16px 0 0;
 }}
 .kpi-label {{
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem; color: {p['sub']};
-    text-transform: uppercase; letter-spacing: 0.1em;
-    margin-bottom: 8px;
+    font-family: 'DM Mono', monospace; font-size: 0.5rem;
+    color: {sub}; text-transform: uppercase;
+    letter-spacing: 0.1em; margin-bottom: 10px;
 }}
 .kpi-val {{
     font-family: 'Syne', sans-serif;
-    font-size: 1.85rem; font-weight: 800;
-    color: {title_color}; line-height: 1;
+    font-size: 1.4rem; font-weight: 800;
+    color: #fff; line-height: 1.15; margin-bottom: 4px;
 }}
-.kpi-delta {{
-    font-size: 0.7rem; color: {p['sub']};
-    margin-top: 5px;
-}}
+.kpi-delta {{ font-size: 0.68rem; color: {sub}; margin-top: 5px; }}
 
-/* ── Chart cards ── */
+/* ── Chart Cards ── */
 .chart-card {{
-    background: {p['card_bg']}{'cc' if drk else 'f8'};
+    background: {card_bg}cc;
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid {p['card_bdr']};
-    border-radius: 16px;
-    padding: 20px 20px 14px;
+    border: 1px solid {card_bdr};
+    border-radius: 16px; padding: 20px 20px 14px;
     margin-bottom: 14px;
-    box-shadow: {'0 4px 24px rgba(0,0,0,0.22)' if drk else '0 2px 12px rgba(0,0,0,0.06)'};
+    box-shadow: 0 4px 24px rgba(0,0,0,0.22);
 }}
 .chart-title {{
     font-family: 'Syne', sans-serif;
     font-size: 0.9rem; font-weight: 700;
-    color: {title_color}; margin-bottom: 2px;
+    color: #fff; margin-bottom: 2px;
 }}
 .chart-sub {{
     font-family: 'DM Mono', monospace;
-    font-size: 0.62rem; color: {p['sub']};
+    font-size: 0.62rem; color: {sub};
     margin-bottom: 14px; letter-spacing: 0.04em;
 }}
 
-/* ── Recent activity table ── */
-.act-row {{
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid {p['card_bdr']};
-    font-size: 0.83rem;
+/* ── Insight Cards ── */
+.insight-card {{
+    background: linear-gradient(135deg, {card_bg}ee, {card_bg}aa);
+    border: 1px solid {card_bdr};
+    border-left: 3px solid {ACCENT};
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    transition: border-color 0.2s;
 }}
-.act-row:last-child {{ border-bottom: none; }}
-.act-name {{ color: {p['text']}; font-weight: 500; }}
-.act-date {{ color: {p['sub']}; font-family: 'DM Mono', monospace; font-size: 0.72rem; }}
-.badge {{
-    display: inline-block; padding: 3px 10px; border-radius: 20px;
-    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;
+.insight-card:hover {{ border-left-color: {CYAN}; }}
+.insight-label {{
+    font-family: 'DM Mono', monospace; font-size: 0.58rem;
+    color: {ACCENT}; text-transform: uppercase;
+    letter-spacing: 0.12em; margin-bottom: 5px;
 }}
-.badge-hi  {{ background: #52B78820; color: #52B788; }}
-.badge-lo  {{ background: {ACCENT}20; color: {ACCENT}; }}
-.badge-med {{ background: #FF8C4220; color: #FF8C42; }}
+.insight-text {{ font-size: 0.83rem; color: {text}; line-height: 1.55; }}
 
-/* ── Prob bar ── */
-.pbar-row {{ margin-bottom: 10px; }}
-.pbar-meta {{ display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:4px; color:{p['text']}; }}
-.pbar-meta span:last-child {{ font-family:'DM Mono',monospace; font-weight:500; }}
-.pbar-track {{ background: {p['grid']}; border-radius: 4px; height: 6px; }}
-.pbar-fill  {{ border-radius: 4px; height: 6px; transition: width 0.4s; }}
+/* ── Timeline ── */
+.timeline-item {{
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid {card_bdr};
+}}
+.timeline-item:last-child {{ border-bottom: none; }}
+.timeline-dot {{
+    width: 10px; height: 10px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 5px;
+    box-shadow: 0 0 8px currentColor;
+}}
+.timeline-year {{
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem; font-weight: 800;
+    color: #fff; min-width: 44px;
+}}
+.timeline-val {{
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; color: {sub};
+}}
 
-/* ── Result box ── */
+/* ── Result Box ── */
 .result-box {{
-    background: {p['card_bg']}{'cc' if drk else 'f8'};
+    background: {card_bg}cc;
     backdrop-filter: blur(20px);
-    border: 1px solid {p['card_bdr']};
+    border: 1px solid {card_bdr};
     border-radius: 16px; padding: 28px 24px;
-    box-shadow: {'0 4px 24px rgba(0,0,0,0.22)' if drk else '0 2px 12px rgba(0,0,0,0.06)'};
+    box-shadow: 0 4px 24px rgba(0,0,0,0.22);
 }}
-.result-box.hi {{ border-color: {ACCENT}66; }}
-.result-box.lo {{ border-color: #f9731666; }}
 .result-cls {{
     font-family: 'Syne', sans-serif;
     font-size: 2rem; font-weight: 800;
     letter-spacing: -0.02em; margin: 10px 0 4px;
 }}
-.result-conf {{ font-family:'DM Mono',monospace; font-size:0.78rem; color:{p['sub']}; }}
+.result-conf {{
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; color: {sub};
+}}
+.pbar-row {{ margin-bottom: 10px; }}
+.pbar-meta {{
+    display: flex; justify-content: space-between;
+    font-size: 0.82rem; margin-bottom: 4px; color: {text};
+}}
+.pbar-meta span:last-child {{ font-family: 'DM Mono', monospace; font-weight: 500; }}
+.pbar-track {{ background: {grid}; border-radius: 4px; height: 7px; }}
+.pbar-fill  {{ border-radius: 4px; height: 7px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }}
 
-/* ── Widgets ── */
-label, .stSelectbox label, .stSlider label, .stFileUploader label {{
+/* ── Badge ── */
+.badge {{
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: 0.68rem;
+    font-weight: 600; letter-spacing: 0.04em;
+}}
+.badge-hi  {{ background: #52B78820; color: #52B788; }}
+.badge-lo  {{ background: {ACCENT}20; color: {ACCENT}; }}
+.badge-med {{ background: #FF8C4220; color: #FF8C42; }}
+
+/* ── Form widgets ── */
+label,
+.stSelectbox label,
+.stSlider label,
+.stFileUploader label {{
     font-family: 'DM Mono', monospace !important;
-    font-size: 0.62rem !important; color: {p['sub']} !important;
-    text-transform: uppercase; letter-spacing: 0.1em;
+    font-size: 0.62rem !important;
+    color: {sub} !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }}
 .stSelectbox > div > div {{
-    background: {p['card_bg']}cc !important;
-    border-color: {p['card_bdr']} !important;
-    color: {p['text']} !important; border-radius: 10px !important;
+    background: {card_bg}cc !important;
+    border-color: {card_bdr} !important;
+    color: {text} !important;
+    border-radius: 10px !important;
 }}
 [data-testid="stFileUploader"] {{
-    background: {p['card_bg']}88;
-    border: 1px dashed {p['card_bdr']}; border-radius: 12px; padding: 4px;
+    background: {card_bg}88;
+    border: 1px dashed {card_bdr};
+    border-radius: 12px; padding: 4px;
 }}
-[data-testid="stFileUploader"] button {{
-    background: {p['card_bdr']} !important;
-    color: {p['text']} !important;
-    border-radius: 6px !important;
-}}
-/* Global buttons — exclude sidebar */
+
+/* ── Main-area buttons ── */
 :not([data-testid="stSidebar"]) .stButton > button {{
-    background: {ACCENT} !important; color: white !important;
-    border: none !important; border-radius: 9px !important;
+    background: {ACCENT} !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 9px !important;
     font-family: 'Inter', sans-serif !important;
-    font-weight: 600 !important; padding: 10px 24px !important;
+    font-weight: 600 !important;
+    padding: 10px 24px !important;
     transition: opacity 0.2s !important;
 }}
 :not([data-testid="stSidebar"]) .stButton > button:hover {{
-    opacity: 0.86 !important; transform: none !important;
-}}
-
-/* Re-assert sidebar button colors AFTER global rule */
-[data-testid="stSidebar"] .stButton > button,
-[data-testid="stSidebar"] .stButton > button *  {{
-    color: {'#b0ccd6' if drk else '#1e4a5a'} !important;
-    background: transparent !important;
-    padding: 0 !important;
-    font-weight: 400 !important;
-    border: 1px solid {'transparent' if drk else 'rgba(30,74,90,0.25)'} !important;
-}}
-[data-testid="stSidebar"] .stButton > button[kind="primary"],
-[data-testid="stSidebar"] .stButton > button[kind="primary"] * {{
-    background: {ACCENT}{'33' if drk else '22'} !important;
-    color: {ACCENT} !important;
-    border-color: {ACCENT}55 !important;
+    opacity: 0.86 !important;
 }}
 .stDownloadButton > button {{
     background: transparent !important;
-    border: 1px solid {p['card_bdr']} !important; color: {p['text']} !important;
-    font-family: 'DM Mono', monospace !important; font-size: 0.78rem !important;
+    border: 1px solid {card_bdr} !important;
+    color: {text} !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.78rem !important;
 }}
-.stDownloadButton > button:hover {{ border-color: {ACCENT} !important; color: {ACCENT} !important; opacity: 1 !important; }}
-[data-testid="stMetricValue"] {{
-    color: {title_color} !important; font-family: 'Syne', sans-serif !important;
+.stDownloadButton > button:hover {{
+    border-color: {ACCENT} !important;
+    color: {ACCENT} !important;
 }}
+
+/* ── Misc ── */
+[data-testid="stMetricValue"] {{ color: #fff !important; font-family: 'Syne', sans-serif !important; }}
 [data-testid="stMetricLabel"] {{
-    color: {p['sub']} !important;
-    font-family: 'DM Mono', monospace !important; font-size: 0.62rem !important;
+    color: {sub} !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.62rem !important;
 }}
-div[data-testid="stMarkdownContainer"] p {{ color: {p['text']}; }}
+div[data-testid="stMarkdownContainer"] p {{ color: {text}; }}
 .stAlert {{ border-radius: 10px !important; }}
 ::-webkit-scrollbar {{ width: 4px; }}
-::-webkit-scrollbar-thumb {{ background: {p['card_bdr']}; border-radius: 2px; }}
+::-webkit-scrollbar-thumb {{ background: {card_bdr}; border-radius: 2px; }}
+.stDataFrame {{ border-radius: 12px; overflow: hidden; }}
 </style>
 """, unsafe_allow_html=True)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  CHART HELPER
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-def mk_fig(w=5.5, h=3.2):
-    p = pal()
-    fig, ax = plt.subplots(figsize=(w, h))
-    fig.patch.set_facecolor(p['chart_bg'])
-    ax.set_facecolor(p['chart_bg'])
-    ax.tick_params(colors=p['sub'], labelsize=8)
-    ax.xaxis.label.set_color(p['sub'])
-    ax.yaxis.label.set_color(p['sub'])
-    for sp in ax.spines.values():
-        sp.set_color(p['grid'])
-    ax.set_axisbelow(True)
-    ax.yaxis.grid(True, color=p['grid'], linewidth=0.6, linestyle='--')
-    ax.xaxis.grid(False)
-    fig.subplots_adjust(left=0.12, right=0.97, top=0.94, bottom=0.18)
-    return fig, ax, p
 
-def save_fig(fig):
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  NAV
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  SIDEBAR NAV
 def nav():
     with st.sidebar:
         # Logo
         st.markdown(f"""
-        <div style="width:42px;height:42px;background:{ACCENT};border-radius:13px;
-             display:flex;align-items:center;justify-content:center;
-             margin:4px auto 22px;
-             box-shadow:0 4px 16px {ACCENT}66;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+        <div class="sidebar-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
                fill="none" stroke="white" stroke-width="2.5"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="9"  x2="12"   y2="13"/>
             <line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
         </div>
         """, unsafe_allow_html=True)
 
-        for label, icon in PAGES:
+        for label, key in PAGES:
             active = st.session_state.get("page") == label
-            if st.button(icon, key=f"nav_{label}", help=label,
-                         type="primary" if active else "secondary"):
+            icon   = PAGE_ICONS[key]
+            if st.button(
+                icon,
+                key=f"nav_{key}",
+                help=label,
+                type="primary" if active else "secondary",
+            ):
                 st.session_state.page = label
                 st.rerun()
 
+#  HELPERS
+def kpi_card(label, val, hint, color):
+    return (
+        f'<div class="kpi">'
+        f'<div class="kpi-accent" style="background:{color};"></div>'
+        f'<div class="kpi-label">{label}</div>'
+        f'<div class="kpi-val">{val}</div>'
+        f'<div class="kpi-delta">{hint}</div>'
+        f'</div>'
+    )
+
+def no_data_msg():
+    st.markdown(
+        f'<div class="chart-card" style="text-align:center;padding:52px;color:{PAL["sub"]};">'
+        'Dataset not found. Run <code>data_cleaning.ipynb</code> first to generate '
+        '<code>outputs/cleaned_tidy.csv</code>.</div>',
+        unsafe_allow_html=True,
+    )
+
+def fmt_millions(n):
+    if n >= 1_000_000:
+        return f"{n/1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n/1_000:.0f}K"
+    return str(n)
+
+def hex_to_rgba(hex_color, alpha=0.7):
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  PAGE: DASHBOARD
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-def page_dashboard():
-    p   = pal()
-    drk = is_dark()
-    title_color = "#ffffff" if drk else p['text']
-
-    # ── Header + filter row
-    hcol, fcol = st.columns([3, 1], gap="medium")
-    with hcol:
-        st.markdown('<div class="pg-title">Analytics Dashboard</div>', unsafe_allow_html=True)
-        st.markdown('<div class="pg-sub">Real-time insights from all classifications</div>', unsafe_allow_html=True)
-    with fcol:
-        cls_f  = st.selectbox("Class filter", ["All"] + CLASS_NAMES, label_visibility="collapsed")
-
-    df_all = load_predictions()
-    df     = load_predictions(cls_f)
-
-    if len(df_all) == 0:
-        st.markdown(f'<div class="chart-card" style="text-align:center;padding:52px;color:{p["sub"]};">No predictions yet — go to Classify to get started.</div>', unsafe_allow_html=True)
+#  PAGE 1: DASHBOARD
+def page_executive():
+    tidy, yearly, summary, heatmap_df = derived_data()
+    if tidy is None:
+        no_data_msg()
         return
 
-    # ── KPI row
-    total   = len(df)
-    avg_c   = df["confidence"].mean() * 100 if total else 0
-    high_c  = int((df["confidence"] >= 0.80).sum()) if total else 0
-    low_c   = int((df["confidence"] < 0.60).sum())  if total else 0
-    top_c   = df["pred_class"].mode()[0].title() if total else "—"
-    model_acc = None
-    mpath = os.path.join(EVAL_DIR, "metrics.json")
-    if os.path.exists(mpath):
-        with open(mpath) as f: metrics = json.load(f)
-        model_acc = metrics.get("test_accuracy", 0) * 100
+    st.markdown('<div class="pg-title">Dashboard</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="pg-sub">Philippines Disaster Impact · PSA Data · 2015–2023</div>',
+        unsafe_allow_html=True,
+    )
 
-    kpi_accent_colors = [ACCENT, "#3B9EBF", "#52B788", "#FF8C42", "#9B8EA0"]
-    kpi_data = [
-        ("Total Classifications", f"{total:,}",        "images processed"),
-        ("Avg Confidence",        f"{avg_c:.1f}%",      "across selected"),
-        ("High Confidence",       f"{high_c}",          "above 80% threshold"),
-        ("Low Confidence",        f"{low_c}",           "needs manual review"),
-        ("Model Accuracy",        f"{model_acc:.1f}%" if model_acc else "—", "on eval test set"),
+    total_persons  = int(tidy["persons_affected"].sum())
+    total_families = int(tidy["families_affected"].sum())
+    top_hazard     = summary.iloc[0]["hazard_type"]
+    peak_year      = int(yearly.loc[yearly["persons_affected"].idxmax(), "year"])
+    peak_val       = int(yearly["persons_affected"].max())
+    avg_annual     = int(yearly["persons_affected"].mean())
+    n_hazards      = int(tidy["hazard_type"].nunique())
+    top_pct        = summary.iloc[0]["total_persons"] / total_persons * 100
+
+    cards = [
+        ("Total Persons Affected",  fmt_millions(total_persons),               "2015–2023 cumulative",                ACCENT),
+        ("Total Families Affected", fmt_millions(total_families),              "2015–2023 cumulative",                CYAN),
+        ("Most Dangerous Hazard",   top_hazard.split("(")[0].strip()[:18],     f"{top_pct:.0f}% of all incidents",    ORANGE),
+        ("Highest Impact Year",     str(peak_year),                            fmt_millions(peak_val)+" persons",     "#F63E31"),
+        ("Avg Annual Impact",       fmt_millions(avg_annual),                  "persons per year",                    GREEN),
+        ("Hazard Types Tracked",    str(n_hazards),                            "unique categories",                   PURPLE),
     ]
-    kpi_html = ""
-    for (label, val, hint), color in zip(kpi_data, kpi_accent_colors):
-        kpi_html += f"""
-        <div class="kpi">
-          <div class="kpi-accent" style="background:{color};"></div>
-          <div class="kpi-label">{label}</div>
-          <div class="kpi-val">{val}</div>
-          <div class="kpi-delta">{hint}</div>
-        </div>"""
-    st.markdown(f'<div class="kpi-row">{kpi_html}</div>', unsafe_allow_html=True)
+    html = "".join(kpi_card(l, v, h, c) for l, v, h, c in cards)
+    st.markdown(f'<div class="kpi-row">{html}</div>', unsafe_allow_html=True)
 
-    # ── Row 1: Line chart (trend) + Donut (class split)
-    col1, col2 = st.columns([3, 2], gap="medium")
+    c1, c2 = st.columns([3, 2], gap="medium")
 
-    with col1:
-        st.markdown(f"""
-        <div class="chart-card">
-          <div class="chart-title">Classification Trend</div>
-          <div class="chart-sub">Daily count per disaster class</div>
-        """, unsafe_allow_html=True)
-
-        if len(df) > 1:
-            df2 = df.copy()
-            df2["timestamp"] = pd.to_datetime(df2["timestamp"])
-            df2["date"]      = df2["timestamp"].dt.strftime("%Y-%m-%d")
-            ts = df2.groupby(["date","pred_class"]).size().unstack(fill_value=0).reindex(columns=CLASS_NAMES, fill_value=0)
-            fig, ax, p2 = mk_fig(w=6.5, h=2.9)
-            for c in CLASS_NAMES:
-                if c in ts.columns and ts[c].sum() > 0:
-                    ax.plot(ts.index, ts[c], label=c.title(),
-                            color=CLS_HEX[c], linewidth=2, marker='o', markersize=4,
-                            markerfacecolor='white', markeredgewidth=1.5)
-                    ax.fill_between(ts.index, ts[c],
-                                    alpha=0.08, color=CLS_HEX[c])
-            ax.set_xlabel("Date", fontsize=8, fontfamily='monospace')
-            ax.set_ylabel("Count", fontsize=8, fontfamily='monospace')
-            plt.xticks(rotation=25, fontsize=7.5)
-            ax.legend(facecolor=p2['chart_bg'], edgecolor=p2['grid'],
-                      labelcolor=p2['text'], fontsize=7.5, ncol=3,
-                      framealpha=0.7, loc='upper left')
-            save_fig(fig)
-        else:
-            st.markdown(f'<div style="padding:40px;text-align:center;color:{p["sub"]};">Classify more images to see trends.</div>', unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="chart-card">
-          <div class="chart-title">Class Distribution</div>
-          <div class="chart-sub">Share of each disaster type</div>
-        """, unsafe_allow_html=True)
-
-        counts = df["pred_class"].value_counts().reindex(CLASS_NAMES, fill_value=0)
-        clrs   = [CLS_HEX[c] for c in counts.index]
-        non_zero = counts[counts > 0]
-
-        if non_zero.sum() > 0:
-            fig, ax, p2 = mk_fig(w=3.8, h=2.9)
-            ax.yaxis.grid(False); ax.xaxis.grid(False)
-            wedges, texts, autotexts = ax.pie(
-                non_zero.values,
-                labels=None,
-                colors=[CLS_HEX[c] for c in non_zero.index],
-                autopct='%1.0f%%',
-                pctdistance=0.78,
-                startangle=90,
-                wedgeprops=dict(width=0.55, edgecolor=p2['chart_bg'], linewidth=2),
-            )
-            for at in autotexts:
-                at.set_fontsize(8)
-                at.set_color(p2['text'])
-                at.set_fontfamily('monospace')
-            # Legend
-            patches = [mpatches.Patch(color=CLS_HEX[c], label=f"{c.title()}  {counts[c]}")
-                       for c in non_zero.index]
-            ax.legend(handles=patches, loc='lower center', bbox_to_anchor=(0.5,-0.22),
-                      ncol=2, fontsize=7.5, frameon=False,
-                      labelcolor=p2['text'], handlelength=1)
-            ax.set_aspect('equal')
-            for sp in ax.spines.values(): sp.set_visible(False)
-            save_fig(fig)
-        else:
-            st.markdown(f'<div style="padding:40px;text-align:center;color:{p["sub"]};">No data.</div>', unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── Row 2: Bar chart (avg conf) + Recent activity table
-    col3, col4 = st.columns([2, 3], gap="medium")
-
-    with col3:
-        st.markdown(f"""
-        <div class="chart-card">
-          <div class="chart-title">Avg Confidence by Class</div>
-          <div class="chart-sub">Mean prediction score per category</div>
-        """, unsafe_allow_html=True)
-
-        avg_conf = df.groupby("pred_class")["confidence"].mean().reindex(CLASS_NAMES, fill_value=0)
-        fig, ax, p2 = mk_fig(w=3.8, h=2.9)
-        ax.yaxis.grid(False)
-        bars = ax.barh(
-            [c.title() for c in avg_conf.index],
-            avg_conf.values * 100,
-            color=[CLS_HEX[c] for c in avg_conf.index],
-            edgecolor='none', height=0.52
+    with c1:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">Annual Impact Trend</div>'
+            '<div class="chart-sub">Total persons & families affected per year</div>',
+            unsafe_allow_html=True,
         )
-        for b, v in zip(bars, avg_conf.values):
-            if v > 0:
-                ax.text(b.get_width() + 0.8, b.get_y() + b.get_height()/2,
-                        f"{v*100:.1f}%", va='center', ha='left',
-                        fontsize=8, color=p2['text'], fontfamily='monospace')
-        ax.set_xlabel("Avg Confidence (%)", fontsize=8, fontfamily='monospace')
-        ax.set_xlim(0, 118)
-        save_fig(fig)
+        metric = st.radio("", ["Persons", "Families", "Both"], horizontal=True,
+                          key="exec_metric", label_visibility="collapsed")
+        fig = go.Figure()
+        if metric in ["Persons", "Both"]:
+            fig.add_trace(go.Scatter(
+                x=yearly["year"], y=yearly["persons_affected"],
+                name="Persons", line=dict(color=ACCENT, width=2.5),
+                mode="lines+markers",
+                marker=dict(size=7, color=ACCENT, line=dict(color="white", width=1.5)),
+                fill="tozeroy", fillcolor="rgba(246,62,49,0.08)",
+                hovertemplate="<b>%{x}</b><br>Persons: %{y:,.0f}<extra></extra>",
+            ))
+        if metric in ["Families", "Both"]:
+            fig.add_trace(go.Scatter(
+                x=yearly["year"], y=yearly["families_affected"],
+                name="Families", line=dict(color=CYAN, width=2.5),
+                mode="lines+markers",
+                marker=dict(size=7, color=CYAN, line=dict(color="white", width=1.5)),
+                fill="tozeroy", fillcolor="rgba(59,158,191,0.08)",
+                hovertemplate="<b>%{x}</b><br>Families: %{y:,.0f}<extra></extra>",
+            ))
+        fig.add_vline(x=peak_year, line_dash="dot", line_color=ACCENT, opacity=0.4)
+        fig.add_annotation(
+            x=peak_year, y=peak_val, text=f"Peak {peak_year}",
+            showarrow=True, arrowhead=2, arrowcolor=ACCENT,
+            font=dict(color=ACCENT, size=10), ax=30, ay=-30,
+            bgcolor=PAL["card_bg"], bordercolor=ACCENT, borderwidth=1,
+        )
+        apply_theme(fig)
+        fig.update_layout(height=280, showlegend=(metric == "Both"),
+                          xaxis=dict(tickmode="linear", dtick=1))
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with col4:
-        st.markdown(f"""
-        <div class="chart-card">
-          <div class="chart-title">Recent Classifications</div>
-          <div class="chart-sub">Latest predictions with confidence status</div>
-        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">Hazard Share</div>'
+            '<div class="chart-sub">Top 6 by persons affected</div>',
+            unsafe_allow_html=True,
+        )
+        top6   = summary.head(6)
+        others = total_persons - top6["total_persons"].sum()
+        labels = list(top6["hazard_type"].str.split("(").str[0].str.strip()) + ["Others"]
+        values = list(top6["total_persons"]) + [others]
+        colors = [ACCENT, CYAN, ORANGE, GREEN, PURPLE, "#F6D860", PAL["card_bdr"]]
+        fig = go.Figure(go.Pie(
+            labels=labels, values=values, hole=0.62,
+            marker_colors=colors,
+            textinfo="percent",
+            textfont=dict(size=10, color="white"),
+            hovertemplate="<b>%{label}</b><br>%{value:,.0f} persons<br>%{percent}<extra></extra>",
+            sort=False,
+        ))
+        fig.add_annotation(
+            text=f"<b>{fmt_millions(total_persons)}</b><br><span style='font-size:9px'>Total</span>",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(color="white", size=14, family="Syne"),
+        )
+        apply_theme(fig)
+        fig.update_layout(height=280, showlegend=False, margin=dict(l=0, r=0, t=10, b=0))
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        recent = df.head(8)
-        if len(recent) > 0:
-            act_html = ""
-            for _, row in recent.iterrows():
-                conf_val  = row['confidence']
-                name      = row['image_name'][:28] + ("…" if len(row['image_name']) > 28 else "")
-                cls_label = row['pred_class'].title()
-                ts        = str(row['timestamp'])[:16]
-                dot_color = CLS_HEX.get(row['pred_class'], ACCENT)
-                if conf_val >= 0.80:
-                    badge = '<span class="badge badge-hi">High</span>'
-                elif conf_val >= 0.60:
-                    badge = '<span class="badge badge-med">Medium</span>'
-                else:
-                    badge = '<span class="badge badge-lo">Low</span>'
-                act_html += f"""
-                <div class="act-row">
-                  <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:{dot_color};flex-shrink:0;"></div>
-                    <div>
-                      <div class="act-name">{cls_label}</div>
-                      <div class="act-date" style="font-size:0.65rem;margin-top:1px;">{name}</div>
-                    </div>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:14px;flex-shrink:0;">
-                    <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:{p['sub']};">{conf_val*100:.0f}%</span>
-                    {badge}
-                    <span class="act-date">{ts}</span>
-                  </div>
-                </div>"""
-            st.markdown(act_html, unsafe_allow_html=True)
+    c3, c4 = st.columns([2, 3], gap="medium")
+
+    with c3:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">Year-over-Year Change</div>'
+            '<div class="chart-sub">Δ persons affected vs prior year</div>',
+            unsafe_allow_html=True,
+        )
+        yoy_df = yearly.copy()
+        yoy_df["yoy"] = yoy_df["persons_affected"].diff()
+        yoy_df = yoy_df.dropna()
+        bar_colors = [GREEN if v < 0 else ACCENT for v in yoy_df["yoy"]]
+        fig = go.Figure(go.Bar(
+            x=yoy_df["year"], y=yoy_df["yoy"],
+            marker_color=bar_colors,
+            hovertemplate="<b>%{x}</b><br>Δ %{y:+,.0f}<extra></extra>",
+        ))
+        apply_theme(fig)
+        fig.update_layout(height=240, xaxis=dict(tickmode="linear", dtick=1),
+                          yaxis=dict(tickformat=".2s"))
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c4:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">Key Insights</div>'
+            '<div class="chart-sub">Key findings from the dataset</div>',
+            unsafe_allow_html=True,
+        )
+        tc_pct      = summary.iloc[0]["total_persons"] / total_persons * 100
+        yoy_pct_df  = yearly.copy()
+        yoy_pct_df["yoy_pct"] = yoy_pct_df["persons_affected"].pct_change() * 100
+        worst_jump   = yoy_pct_df.loc[yoy_pct_df["yoy_pct"].idxmax()]
+        active_hazards = int((tidy.groupby("hazard_type")["had_impact"].sum() >= 5).sum())
+
+        insights = [
+            ("Dominant Threat",
+             f"Tropical Cyclones account for {tc_pct:.0f}% of all affected persons from 2015 to 2023, "
+             "making it the singular most impactful hazard category in the Philippines."),
+            ("Peak Impact Year",
+             f"{peak_year} recorded the highest annual toll with {fmt_millions(peak_val)} persons affected — "
+             "driven by an intense typhoon season and compounding hazard events."),
+            ("Escalating Trend",
+             "Disaster impact increased significantly after 2018, with 2021–2023 consistently exceeding "
+             "the 10 million persons affected mark each year."),
+            ("Persistent Hazards",
+             f"{active_hazards} hazard types recorded impact in 5 or more of the 9 years tracked, "
+             "indicating recurring vulnerability across multiple categories."),
+            ("Largest Single-Year Surge",
+             f"{int(worst_jump['year'])} saw the sharpest year-over-year increase at "
+             f"+{worst_jump['yoy_pct']:.0f}%, signalling the need for surge-response preparedness."),
+        ]
+        for label, text in insights:
+            st.markdown(
+                f'<div class="insight-card">'
+                f'<div class="insight-label">{label}</div>'
+                f'<div class="insight-text">{text}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+
+#  PAGE 2: DISASTER ANALYTICS
+def page_analytics():
+    tidy, yearly, summary, heatmap_df = derived_data()
+    if tidy is None:
+        no_data_msg()
+        return
+
+    st.markdown('<div class="pg-title">Disaster Analytics</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="pg-sub">Deep-dive into hazard categories, trends, and patterns</div>',
+        unsafe_allow_html=True,
+    )
+
+    f1, f2, f3 = st.columns(3)
+    with f1: top_n      = st.selectbox("Show top hazards", [5, 10, 15, 20, "All"], index=1)
+    with f2: metric     = st.selectbox("Metric", ["persons_affected", "families_affected"])
+    with f3: year_range = st.slider("Year range", 2015, 2023, (2015, 2023))
+
+    tidy_f = tidy[(tidy["year"] >= year_range[0]) & (tidy["year"] <= year_range[1])].copy()
+    summ_f = (
+        tidy_f.groupby("hazard_type")[metric]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()
+    )
+    if top_n != "All":
+        summ_f = summ_f.head(int(top_n))
+    summ_f = summ_f.sort_values(metric)
+
+    st.markdown(
+        '<div class="chart-card"><div class="chart-title">Hazard Rankings</div>'
+        '<div class="chart-sub">Ranked by total affected. You may hover for details.</div>',
+        unsafe_allow_html=True,
+    )
+    n = len(summ_f)
+    bar_colors = [f"rgba(246,62,49,{0.4 + 0.6*(i/max(n-1,1)):.2f})" for i in range(n)]
+    fig = go.Figure(go.Bar(
+        x=summ_f[metric],
+        y=summ_f["hazard_type"].str[:35],
+        orientation="h",
+        marker_color=bar_colors,
+        text=summ_f[metric].apply(fmt_millions),
+        textposition="outside",
+        textfont=dict(color=PAL["sub"], size=9),
+        hovertemplate="<b>%{y}</b><br>%{x:,.0f}<extra></extra>",
+    ))
+    apply_theme(fig)
+    fig.update_layout(height=max(300, n*32), xaxis=dict(tickformat=".2s"),
+                      yaxis=dict(tickfont=dict(size=9)))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="chart-card"><div class="chart-title">Trend Per-Hazard</div>'
+        '<div class="chart-sub">Select hazards to compare over time</div>',
+        unsafe_allow_html=True,
+    )
+    all_hazards = sorted(tidy["hazard_type"].unique().tolist())
+    defaults    = summary.head(5)["hazard_type"].tolist()
+    selected    = st.multiselect("Hazard types", all_hazards, default=defaults[:3], key="analytics_sel")
+    if selected:
+        colors_map = [ACCENT, CYAN, ORANGE, GREEN, PURPLE, "#F6D860"]
+        fig = go.Figure()
+        sel_df = tidy_f[tidy_f["hazard_type"].isin(selected)].copy()
+        for i, h in enumerate(selected):
+            d = sel_df[sel_df["hazard_type"] == h].sort_values("year")
+            fig.add_trace(go.Scatter(
+                x=d["year"], y=d[metric],
+                name=h.split("(")[0].strip()[:25],
+                line=dict(color=colors_map[i % len(colors_map)], width=2.5),
+                mode="lines+markers", marker=dict(size=6),
+                hovertemplate=f"<b>{h[:30]}</b><br>Year: %{{x}}<br>{metric}: %{{y:,.0f}}<extra></extra>",
+            ))
+        apply_theme(fig)
+        fig.update_layout(height=300, xaxis=dict(tickmode="linear", dtick=1))
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    else:
+        st.info("Select at least one hazard type above.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="chart-card"><div class="chart-title">Summary Statistics</div>'
+        '<div class="chart-sub">Aggregated metrics per hazard type for selected period</div>',
+        unsafe_allow_html=True,
+    )
+    agg = (
+        tidy_f.groupby("hazard_type").agg(
+            total_persons=("persons_affected", "sum"),
+            total_families=("families_affected", "sum"),
+            peak_persons=("persons_affected", "max"),
+            active_years=("had_impact", "sum"),
+        )
+        .sort_values("total_persons", ascending=False)
+        .reset_index()
+    )
+    agg["total_persons"]  = agg["total_persons"].apply(lambda x: f"{x:,.0f}")
+    agg["total_families"] = agg["total_families"].apply(lambda x: f"{x:,.0f}")
+    agg["peak_persons"]   = agg["peak_persons"].apply(lambda x: f"{x:,.0f}")
+    agg.columns = ["Hazard Type", "Total Persons", "Total Families", "Peak Year Persons", "Active Years"]
+    st.dataframe(agg, use_container_width=True, hide_index=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+#  PAGE 3: VISUALIZATIONS
+def page_visuals():
+    tidy, yearly, summary, heatmap_df = derived_data()
+    if tidy is None:
+        no_data_msg()
+        return
+
+    st.markdown('<div class="pg-title">Interactive Visualizations</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="pg-sub">Heatmaps, timelines, and advanced visual analytics</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="chart-card"><div class="chart-title">Disaster Intensity Heatmap</div>'
+        '<div class="chart-sub">Persons affected per hazard type per year — darker = higher impact</div>',
+        unsafe_allow_html=True,
+    )
+    top20 = summary.head(20)["hazard_type"].tolist()
+    hm    = heatmap_df.loc[heatmap_df.index.isin(top20)]
+    labels_y = [h[:35] for h in hm.index]
+    fig = go.Figure(go.Heatmap(
+        z=hm.values,
+        x=[str(c) for c in hm.columns],
+        y=labels_y,
+        colorscale=[
+            [0,   "rgba(11,24,32,0.9)"],
+            [0.3, "rgba(59,158,191,0.6)"],
+            [0.7, "rgba(246,62,49,0.8)"],
+            [1,   "rgba(246,62,49,1)"],
+        ],
+        hovertemplate="<b>%{y}</b><br>Year: %{x}<br>Persons: %{z:,.0f}<extra></extra>",
+        showscale=True,
+        colorbar=dict(
+            tickfont=dict(color=PAL["sub"], size=9),
+            bgcolor="rgba(0,0,0,0)",
+            bordercolor=PAL["card_bdr"],
+        ),
+    ))
+    apply_theme(fig)
+    fig.update_layout(height=520, yaxis=dict(tickfont=dict(size=9)))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="chart-card"><div class="chart-title">Impact Bubble Timeline</div>'
+        '<div class="chart-sub">Bubble size = persons affected · Animated by year</div>',
+        unsafe_allow_html=True,
+    )
+    top10_h   = summary.head(10)["hazard_type"].tolist()
+    bubble_df = tidy[tidy["hazard_type"].isin(top10_h)].copy()
+    bubble_df["rank"] = bubble_df["hazard_type"].map({h: i for i, h in enumerate(top10_h)})
+    fig = px.scatter(
+        bubble_df.sort_values("year"),
+        x="rank", y="persons_affected",
+        size="persons_affected", color="hazard_type",
+        animation_frame="year", size_max=80,
+        hover_name="hazard_type",
+        hover_data={"persons_affected": ":,.0f", "families_affected": ":,.0f", "rank": False},
+        color_discrete_sequence=[ACCENT, CYAN, ORANGE, GREEN, PURPLE,
+                                  "#F6D860", "#A8DADC", "#E9C46A", "#264653", "#2A9D8F"],
+        labels={"persons_affected": "Persons Affected", "rank": "Hazard Rank"},
+    )
+    apply_theme(fig)
+    fig.update_layout(height=380, showlegend=False,
+                      xaxis=dict(showticklabels=False, title=""),
+                      yaxis=dict(tickformat=".2s"))
+    fig.update_traces(marker=dict(opacity=0.85, line=dict(width=1, color="white")))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2, gap="medium")
+
+    with c1:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">Disaster Timeline</div>'
+            '<div class="chart-sub">Peak years and impact magnitude</div>',
+            unsafe_allow_html=True,
+        )
+        timeline_html = ""
+        max_val = int(yearly["persons_affected"].max())
+        for _, row in yearly.iterrows():
+            yr  = int(row["year"])
+            val = int(row["persons_affected"])
+            pct = val / max_val
+            dot_color = ACCENT if pct > 0.8 else (ORANGE if pct > 0.5 else CYAN)
+            val_color = "#fff" if pct > 0.8 else PAL["sub"]
+            timeline_html += (
+                f'<div class="timeline-item">'
+                f'<div class="timeline-dot" style="background:{dot_color};color:{dot_color};"></div>'
+                f'<div style="flex:1;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                f'<span class="timeline-year">{yr}</span>'
+                f'<span style="font-family:\'DM Mono\',monospace;font-size:0.8rem;color:{val_color};">'
+                f'{fmt_millions(val)} persons</span>'
+                f'</div>'
+                f'<div style="background:{PAL["grid"]};border-radius:3px;height:4px;margin-top:6px;">'
+                f'<div style="background:{dot_color};width:{pct*100:.1f}%;height:4px;border-radius:3px;"></div>'
+                f'</div>'
+                f'</div></div>'
+            )
+        st.markdown(timeline_html, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">Stacked Area — Top 5 Hazards</div>'
+            '<div class="chart-sub">Cumulative impact breakdown by year</div>',
+            unsafe_allow_html=True,
+        )
+        top5       = summary.head(5)["hazard_type"].tolist()
+        area_df    = tidy[tidy["hazard_type"].isin(top5)].copy()
+        area_pivot = area_df.pivot_table(
+            index="year", columns="hazard_type",
+            values="persons_affected", aggfunc="sum", fill_value=0,
+        )
+        area_colors = [ACCENT, CYAN, ORANGE, GREEN, PURPLE]
+        fig = go.Figure()
+        for i, col in enumerate(top5):
+            if col in area_pivot.columns:
+                fig.add_trace(go.Scatter(
+                    x=area_pivot.index, y=area_pivot[col],
+                    name=col[:22], mode="lines",
+                    stackgroup="one",
+                    line=dict(color=area_colors[i], width=0),
+                    fillcolor=hex_to_rgba(area_colors[i], 0.7),
+                    hovertemplate=f"<b>{col[:25]}</b><br>%{{x}}: %{{y:,.0f}}<extra></extra>",
+                ))
+        apply_theme(fig)
+        fig.update_layout(
+            height=300,
+            xaxis=dict(tickmode="linear", dtick=1),
+            legend=dict(orientation="h", y=-0.2, font=dict(size=9)),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="chart-card"><div class="chart-title">Trend & Moving Average</div>'
+        '<div class="chart-sub">3-year rolling average with simple linear forecast</div>',
+        unsafe_allow_html=True,
+    )
+    yr_vals = yearly.copy()
+    yr_vals["rolling_avg"] = yr_vals["persons_affected"].rolling(3, min_periods=1).mean()
+    x      = np.arange(len(yr_vals))
+    coeffs = np.polyfit(x, yr_vals["persons_affected"], 1)
+    forecast_years = [2024, 2025, 2026]
+    forecast_vals  = [int(coeffs[0] * (len(yr_vals) + i) + coeffs[1]) for i in range(3)]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=yr_vals["year"], y=yr_vals["persons_affected"],
+        name="Actual", marker_color="rgba(246,62,49,0.35)",
+        hovertemplate="<b>%{x}</b><br>Actual: %{y:,.0f}<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=yr_vals["year"], y=yr_vals["rolling_avg"],
+        name="3-yr Avg", line=dict(color=CYAN, width=2.5),
+        hovertemplate="<b>%{x}</b><br>Rolling avg: %{y:,.0f}<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=forecast_years, y=forecast_vals,
+        name="Forecast", line=dict(color=ORANGE, width=2, dash="dot"),
+        marker=dict(size=8, symbol="diamond", color=ORANGE),
+        hovertemplate="<b>%{x}</b><br>Forecast: %{y:,.0f}<extra></extra>",
+    ))
+    apply_theme(fig)
+    fig.update_layout(height=300, xaxis=dict(tickmode="linear", dtick=1),
+                      yaxis=dict(tickformat=".2s"))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+#  PAGE 4: CLASSIFIER
+def page_classify(model):
+    st.markdown('<div class="pg-title">Image Classifier</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="pg-sub">Upload a disaster image for real-time disaster classification</div>',
+        unsafe_allow_html=True,
+    )
+
+    if model is None:
+        st.warning("Model not found at `models/disaster_classifier.keras`. "
+                   "The analytics dashboard works independently of the model.")
+        return
+
+    left, right = st.columns(2, gap="large")
+
+    with left:
+        uploaded = st.file_uploader("Drop image or click to browse", type=["jpg", "jpeg", "png"])
+        if uploaded:
+            st.image(Image.open(uploaded), caption=uploaded.name, use_container_width=True)
+            run = st.button("Run Classification", use_container_width=True)
         else:
-            st.markdown(f'<div style="padding:32px;text-align:center;color:{p["sub"]};">No recent classifications.</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="result-box" style="text-align:center;padding:52px;color:{PAL["sub"]};">'
+                'JPG · JPEG · PNG supported</div>',
+                unsafe_allow_html=True,
+            )
+            run = False
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    with right:
+        if uploaded and run:
+            with st.spinner("Analyzing image…"):
+                cls, conf, probs = run_predict(model, Image.open(uploaded))
+                save_prediction(uploaded.name, cls, conf)
+            lo      = conf < 0.60
+            c_color = "#f97316" if lo else CLS_HEX.get(cls, ACCENT)
+            warn_html = (
+                '<div style="background:#f9731618;border:1px solid #f9731644;border-radius:8px;'
+                'padding:9px 14px;margin-bottom:14px;font-size:0.75rem;color:#f97316;'
+                'font-family:DM Mono,monospace;">LOW CONFIDENCE — verify manually</div>'
+            ) if lo else ""
 
-    # ── Row 3: Confusion matrix + Model metrics (collapsible)
+            st.markdown(
+                f'<div class="result-box">{warn_html}'
+                f'<div style="font-family:DM Mono,monospace;font-size:0.6rem;color:{PAL["sub"]};'
+                f'text-transform:uppercase;letter-spacing:0.14em;">Predicted Class</div>'
+                f'<div class="result-cls" style="color:{c_color};">{cls.upper()}</div>'
+                f'<div class="result-conf">Confidence: <strong style="color:#fff;">'
+                f'{conf*100:.1f}%</strong></div></div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div style="font-family:DM Mono,monospace;font-size:0.6rem;color:{PAL["sub"]};'
+                f'text-transform:uppercase;letter-spacing:0.14em;margin:20px 0 12px;">'
+                f'All Class Probabilities</div>',
+                unsafe_allow_html=True,
+            )
+            bars_html = ""
+            for i, c in enumerate(CLASS_NAMES):
+                pv    = float(probs[i])
+                color = CLS_HEX.get(c, ACCENT)
+                bars_html += (
+                    f'<div class="pbar-row">'
+                    f'<div class="pbar-meta"><span>{c.title()}</span><span>{pv*100:.1f}%</span></div>'
+                    f'<div class="pbar-track">'
+                    f'<div class="pbar-fill" style="width:{pv*100:.1f}%;background:{color};"></div>'
+                    f'</div></div>'
+                )
+            st.markdown(bars_html, unsafe_allow_html=True)
+        elif not uploaded:
+            st.markdown(
+                f'<div class="result-box" style="text-align:center;padding:52px;color:{PAL["sub"]};">'
+                'Results will appear here after classification.</div>',
+                unsafe_allow_html=True,
+            )
+
     with st.expander("Model Performance Details", expanded=False):
         c5, c6 = st.columns(2, gap="medium")
         with c5:
             cm = os.path.join(EVAL_DIR, "confusion_matrix.png")
             if os.path.exists(cm):
                 st.image(cm, use_container_width=True)
+            else:
+                st.info("confusion_matrix.png not found in eval/ folder.")
         with c6:
+            mpath = os.path.join(EVAL_DIR, "metrics.json")
             if os.path.exists(mpath):
+                with open(mpath) as f:
+                    metrics = json.load(f)
                 wr = metrics.get("classification_report", {}).get("weighted avg", {})
                 m1, m2 = st.columns(2)
                 with m1:
-                    st.metric("Test Accuracy", f"{metrics.get('test_accuracy',0)*100:.2f}%")
-                    st.metric("Precision",     f"{wr.get('precision',0)*100:.2f}%")
+                    st.metric("Test Accuracy", f"{metrics.get('test_accuracy', 0)*100:.2f}%")
+                    st.metric("Precision",     f"{wr.get('precision', 0)*100:.2f}%")
                 with m2:
-                    st.metric("Recall",   f"{wr.get('recall',0)*100:.2f}%")
-                    st.metric("F1-Score", f"{wr.get('f1-score',0)*100:.2f}%")
-                rows = [{"Class": c.title(),
-                         "Precision": f"{metrics['classification_report'].get(c,{}).get('precision',0)*100:.1f}%",
-                         "Recall":    f"{metrics['classification_report'].get(c,{}).get('recall',0)*100:.1f}%",
-                         "F1":        f"{metrics['classification_report'].get(c,{}).get('f1-score',0)*100:.1f}%",
-                         "Support":   int(metrics['classification_report'].get(c,{}).get('support',0))}
-                        for c in CLASS_NAMES]
+                    st.metric("Recall",   f"{wr.get('recall', 0)*100:.2f}%")
+                    st.metric("F1-Score", f"{wr.get('f1-score', 0)*100:.2f}%")
+                rows = [{
+                    "Class":     c.title(),
+                    "Precision": f"{metrics['classification_report'].get(c, {}).get('precision', 0)*100:.1f}%",
+                    "Recall":    f"{metrics['classification_report'].get(c, {}).get('recall', 0)*100:.1f}%",
+                    "F1":        f"{metrics['classification_report'].get(c, {}).get('f1-score', 0)*100:.1f}%",
+                    "Support":   int(metrics['classification_report'].get(c, {}).get('support', 0)),
+                } for c in CLASS_NAMES]
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            else:
+                st.info("metrics.json not found in eval/ folder.")
         curve = os.path.join(EVAL_DIR, "training_curves.png")
         if os.path.exists(curve):
             st.image(curve, use_container_width=True)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  PAGE: CLASSIFY
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-def page_classify(model):
-    p   = pal()
-    drk = is_dark()
-    title_color = "#ffffff" if drk else p['text']
-    st.markdown('<div class="pg-title">Classify Image</div>', unsafe_allow_html=True)
-    st.markdown('<div class="pg-sub">Upload a disaster image for instant AI classification</div>', unsafe_allow_html=True)
 
-    if model is None:
-        st.error("Model not found at `models/disaster_classifier.keras`.")
-        return
-
-    left, right = st.columns(2, gap="large")
-    with left:
-        uploaded = st.file_uploader("Drop image or click to browse", type=["jpg","jpeg","png"])
-        if uploaded:
-            st.image(Image.open(uploaded), caption=uploaded.name, use_container_width=True)
-            run = st.button("Run Classification", use_container_width=True)
-        else:
-            st.markdown(f'<div class="result-box" style="text-align:center;padding:52px;color:{p["sub"]};">JPG · JPEG · PNG supported</div>', unsafe_allow_html=True)
-            run = False
-
-    with right:
-        if uploaded and run:
-            with st.spinner("Analyzing..."):
-                cls, conf, probs = run_predict(model, Image.open(uploaded))
-                save_prediction(uploaded.name, cls, conf)
-
-            lo      = conf < 0.60
-            c_color = "#f97316" if lo else CLS_HEX.get(cls, ACCENT)
-            box_cls = "lo" if lo else "hi"
-            warn    = f'<div style="background:#f9731618;border:1px solid #f9731644;border-radius:8px;padding:9px 14px;margin-bottom:14px;font-size:0.75rem;color:#f97316;font-family:DM Mono,monospace;letter-spacing:0.05em;">LOW CONFIDENCE — verify manually</div>' if lo else ""
-
-            st.markdown(f"""
-            <div class="result-box {box_cls}">
-              {warn}
-              <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:{p['sub']};text-transform:uppercase;letter-spacing:0.14em;">Predicted Class</div>
-              <div class="result-cls" style="color:{c_color};">{cls.upper()}</div>
-              <div class="result-conf">Confidence: <strong style="color:{title_color};">{conf*100:.1f}%</strong></div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f'<div style="font-family:DM Mono,monospace;font-size:0.6rem;color:{p["sub"]};text-transform:uppercase;letter-spacing:0.14em;margin:20px 0 12px;">All Class Probabilities</div>', unsafe_allow_html=True)
-            for i, c in enumerate(CLASS_NAMES):
-                pv = float(probs[i])
-                st.markdown(f"""
-                <div class="pbar-row">
-                  <div class="pbar-meta"><span>{c.title()}</span><span>{pv*100:.1f}%</span></div>
-                  <div class="pbar-track"><div class="pbar-fill" style="width:{pv*100:.1f}%;background:{CLS_HEX.get(c,ACCENT)};"></div></div>
-                </div>""", unsafe_allow_html=True)
-
-        elif not uploaded:
-            st.markdown(f'<div class="result-box" style="text-align:center;padding:52px;color:{p["sub"]};">Results will appear here</div>', unsafe_allow_html=True)
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  PAGE: HISTORY
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  PAGE 5: PREDICTION HISTORY
 def page_history():
-    p   = pal()
-    drk = is_dark()
-    title_color = "#ffffff" if drk else p['text']
     st.markdown('<div class="pg-title">Prediction History</div>', unsafe_allow_html=True)
-    st.markdown('<div class="pg-sub">All classifications stored in local database</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="pg-sub">All AI classifications stored in local database</div>',
+        unsafe_allow_html=True,
+    )
 
     c1, c2, c3 = st.columns(3)
-    with c1: flt     = st.selectbox("Class", ["All"] + CLASS_NAMES)
-    with c2: conf_mn = st.slider("Min Confidence (%)", 0, 100, 0, 5) / 100
-    with c3: sort_by = st.selectbox("Sort", ["Newest First","Oldest First","Highest Confidence","Lowest Confidence"])
+    with c1: flt      = st.selectbox("Class", ["All"] + CLASS_NAMES)
+    with c2: conf_min = st.slider("Min Confidence (%)", 0, 100, 0, 5) / 100
+    with c3: sort_by  = st.selectbox("Sort", ["Newest First", "Oldest First",
+                                               "Highest Confidence", "Lowest Confidence"])
 
-    df = load_predictions(flt, conf_mn)
-    if sort_by == "Oldest First":         df = df.sort_values("id")
-    elif sort_by == "Highest Confidence": df = df.sort_values("confidence", ascending=False)
-    elif sort_by == "Lowest Confidence":  df = df.sort_values("confidence")
+    df = load_predictions(flt, conf_min)
+    if sort_by == "Oldest First":
+        df = df.sort_values("id")
+    elif sort_by == "Highest Confidence":
+        df = df.sort_values("confidence", ascending=False)
+    elif sort_by == "Lowest Confidence":
+        df = df.sort_values("confidence")
 
     if len(df) == 0:
-        st.markdown(f'<div class="chart-card" style="text-align:center;color:{p["sub"]};padding:32px;">No predictions match the current filters.</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="chart-card" style="text-align:center;color:{PAL["sub"]};padding:32px;">'
+            'No predictions yet — use the AI Classifier page to get started.</div>',
+            unsafe_allow_html=True,
+        )
         return
 
-    kpi_html = f"""
-    <div class="kpi-row">
-      <div class="kpi"><div class="kpi-accent" style="background:{ACCENT};"></div>
-        <div class="kpi-label">Showing</div><div class="kpi-val">{len(df)}</div></div>
-      <div class="kpi"><div class="kpi-accent" style="background:#3B9EBF;"></div>
-        <div class="kpi-label">Avg Confidence</div><div class="kpi-val">{df['confidence'].mean()*100:.1f}%</div></div>
-      <div class="kpi"><div class="kpi-accent" style="background:#52B788;"></div>
-        <div class="kpi-label">High Confidence</div><div class="kpi-val">{int((df['confidence']>=0.80).sum())}</div>
-        <div class="kpi-delta">above 80%</div></div>
-    </div>"""
-    st.markdown(kpi_html, unsafe_allow_html=True)
+    html = "".join([
+        kpi_card("Showing",         str(len(df)),                              "records",           ACCENT),
+        kpi_card("Avg Confidence",  f"{df['confidence'].mean()*100:.1f}%",     "across filtered",   CYAN),
+        kpi_card("High Confidence", str(int((df['confidence'] >= 0.80).sum())), "above 80%",        GREEN),
+    ])
+    st.markdown(f'<div class="kpi-row">{html}</div>', unsafe_allow_html=True)
 
-    disp = df[["image_name","pred_class","confidence","timestamp"]].copy()
-    disp.columns = ["Image","Class","Confidence","Timestamp"]
+    disp = df[["image_name", "pred_class", "confidence", "timestamp"]].copy()
+    disp.columns = ["Image", "Class", "Confidence", "Timestamp"]
     disp["Confidence"] = disp["Confidence"].apply(lambda x: f"{x*100:.1f}%")
     disp["Class"]      = disp["Class"].apply(str.title)
     st.dataframe(disp, use_container_width=True, hide_index=True)
-    st.download_button("Export CSV", df.to_csv(index=False).encode(), "history.csv", "text/csv")
+    st.download_button("Export CSV", df.to_csv(index=False).encode(),
+                       "prediction_history.csv", "text/csv")
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  PAGE: ABOUT
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-def page_about():
-    p   = pal()
-    drk = is_dark()
-    title_color = "#ffffff" if drk else p['text']
-    st.markdown('<div class="pg-title">About</div>', unsafe_allow_html=True)
-    st.markdown('<div class="pg-sub">System information and model details</div>', unsafe_allow_html=True)
+#  PAGE 6: DATASET EXPLORER
+def page_explorer():
+    tidy, yearly, summary, heatmap_df = derived_data()
+    if tidy is None:
+        no_data_msg()
+        return
 
-    col1, col2 = st.columns(2, gap="large")
-    td_k = f'color:{p["sub"]};font-family:DM Mono,monospace;font-size:0.68rem;padding:7px 0;width:110px;vertical-align:top;'
-    td_v = f'color:{p["text"]};padding:7px 0;font-size:0.83rem;'
+    st.markdown('<div class="pg-title">Dataset Explorer</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="pg-sub">Filter, search, and export the cleaned PSA dataset</div>',
+        unsafe_allow_html=True,
+    )
 
-    with col1:
-        arch = [("BACKBONE","EfficientNetB0 — ImageNet weights"),("INPUT","224 × 224 × 3 RGB"),
-                ("PREPROCESS","preprocess_input → [−1, 1]"),
-                ("HEAD","GAP → BN → Dense(256) → Dropout(0.4) → Dense(128) → Dropout(0.3) → Softmax(5)"),
-                ("PHASE 1","Head only · lr=1e-3 · 10 epochs"),
-                ("PHASE 2","Last 20 layers · lr=1e-5 · 20 epochs"),
-                ("AUGMENT","Rotation · Zoom · H-Flip · Brightness"),("ACCURACY","96.40% on test set")]
-        rows = "".join(f'<tr><td style="{td_k}">{k}</td><td style="{td_v}">{v}</td></tr>' for k,v in arch)
-        lims = "".join(f'<li style="color:{p["sub"]};line-height:2;font-size:0.83rem;">{x}</li>' for x in [
-            "Only recognizes the 5 trained disaster classes",
-            "Performance degrades on blurry or dark images",
-            "Not designed for real-time video or live feeds",
-            "Below 60% confidence — verify manually"])
-        st.markdown(f"""
-        <div class="chart-card"><div class="chart-title">Model Architecture</div>
-          <table style="width:100%;border-collapse:collapse;">{rows}</table></div>
-        <div class="chart-card"><div class="chart-title">Limitations</div>
-          <ul style="padding-left:16px;margin:0;">{lims}</ul></div>""", unsafe_allow_html=True)
+    f1, f2, f3, f4 = st.columns(4)
+    with f1:
+        hazard_opts = ["All"] + sorted(tidy["hazard_type"].unique().tolist())
+        hazard_sel  = st.selectbox("Hazard Type", hazard_opts)
+    with f2:
+        year_sel = st.multiselect(
+            "Year(s)", sorted(tidy["year"].unique().tolist()),
+            default=sorted(tidy["year"].unique().tolist()),
+        )
+    with f3:
+        min_persons = st.number_input("Min Persons Affected", min_value=0, value=0, step=1000)
+    with f4:
+        sort_col = st.selectbox("Sort by", ["persons_affected", "families_affected",
+                                             "year", "hazard_type"])
 
-    with col2:
-        cls_rows = "".join(f'<tr><td style="{td_k.replace(p["sub"],ACCENT)}">{c.upper()}</td><td style="{td_v}">{d}</td></tr>' for c,d in [
-            ("earthquake","Collapsed structures, debris"),("fire","Wildfires and structure fires"),
-            ("flood","Urban and rural inundation"),("landslide","Mudslides, slope collapses"),
-            ("normal","Non-disaster everyday scenes")])
-        tech_rows = "".join(f'<tr><td style="{td_k}">{k}</td><td style="{td_v}">{v}</td></tr>' for k,v in [
-            ("ML","TensorFlow / Keras"),("DASHBOARD","Streamlit"),("DATA","NumPy · Pandas"),
-            ("CHARTS","Matplotlib"),("DATABASE","SQLite"),("IMAGE","Pillow")])
-        st.markdown(f"""
-        <div class="chart-card"><div class="chart-title">Classes</div>
-          <table style="width:100%;border-collapse:collapse;">{cls_rows}</table></div>
-        <div class="chart-card"><div class="chart-title">Tech Stack</div>
-          <table style="width:100%;border-collapse:collapse;">{tech_rows}</table></div>""", unsafe_allow_html=True)
+    df_view = tidy.copy()
+    if hazard_sel != "All":
+        df_view = df_view[df_view["hazard_type"] == hazard_sel]
+    if year_sel:
+        df_view = df_view[df_view["year"].isin(year_sel)]
+    df_view = df_view[df_view["persons_affected"] >= min_persons]
+    df_view = df_view.sort_values(sort_col, ascending=(sort_col in ["hazard_type", "year"]))
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    html = "".join([
+        kpi_card("Rows",           f"{len(df_view):,}",                                    "matching filters",  ACCENT),
+        kpi_card("Total Persons",  fmt_millions(int(df_view["persons_affected"].sum())),    "filtered total",    CYAN),
+        kpi_card("Total Families", fmt_millions(int(df_view["families_affected"].sum())),   "filtered total",    GREEN),
+        kpi_card("Hazard Types",   str(df_view["hazard_type"].nunique()),                   "in selection",      ORANGE),
+    ])
+    st.markdown(f'<div class="kpi-row">{html}</div>', unsafe_allow_html=True)
+
+    disp = df_view[[
+        "hazard_type", "year", "families_affected",
+        "persons_affected", "avg_persons_per_family", "persons_yoy_change",
+    ]].copy()
+    disp.columns = ["Hazard Type", "Year", "Families Affected",
+                    "Persons Affected", "Avg Persons/Family", "YoY Change"]
+    disp["Families Affected"] = disp["Families Affected"].apply(lambda x: f"{x:,.0f}")
+    disp["Persons Affected"]  = disp["Persons Affected"].apply(lambda x: f"{x:,.0f}")
+    disp["YoY Change"]        = disp["YoY Change"].apply(lambda x: f"{x:+,.0f}")
+    st.dataframe(disp, use_container_width=True, hide_index=True, height=420)
+    st.download_button(
+        "Export Filtered CSV",
+        df_view.to_csv(index=False).encode(),
+        "filtered_dataset.csv", "text/csv",
+    )
+
 #  MAIN
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def main():
     init_db()
-    if "page" not in st.session_state: st.session_state.page = "Dashboard"
+    if "page" not in st.session_state:
+        st.session_state.page = "Executive Dashboard"
     inject_css()
     nav()
 
     model = load_model()
     pg = st.session_state.page
-    if   pg == "Dashboard": page_dashboard()
-    elif pg == "Classify":  page_classify(model)
-    elif pg == "History":   page_history()
-    elif pg == "About":     page_about()
+
+    if   pg == "Executive Dashboard": page_executive()
+    elif pg == "Disaster Analytics":  page_analytics()
+    elif pg == "Visualizations":      page_visuals()
+    elif pg == "AI Classifier":       page_classify(model)
+    elif pg == "Prediction History":  page_history()
+    elif pg == "Dataset Explorer":    page_explorer()
+
 
 if __name__ == "__main__":
     main()
