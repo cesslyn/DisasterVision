@@ -54,7 +54,7 @@ PAGE_ICONS = {
     "explorer":  "🗄️",
 }
 
-# Major hazard category mapping 
+# Major hazard category mapping
 HAZARD_CATEGORIES = {
     "Meteorological": [
         "cyclone", "typhoon", "tropical", "storm", "wind", "rain",
@@ -71,7 +71,7 @@ HAZARD_CATEGORIES = {
     ],
     "Climatological": [
         "drought", "el nino", "el niño", "la nina", "la niña",
-        "heat", "cold", "frost", "dry spell", "fire" , "wildfire",
+        "heat", "cold", "frost", "dry spell", "fire", "wildfire",
     ],
     "Biological": [
         "disease", "epidemic", "pest", "locust", "outbreak",
@@ -96,7 +96,7 @@ def assign_category(hazard_type: str) -> str:
     for cat, keywords in HAZARD_CATEGORIES.items():
         if any(kw in ht for kw in keywords):
             return cat
-    return "Combined Events"   # fallback
+    return "Combined Events"
 
 #  PAGE CONFIG
 st.set_page_config(
@@ -644,22 +644,71 @@ def page_analytics():
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # ── FIX: Trend Per-Hazard ─────────────────────────────────────────────
+    # Only offer hazards that actually have data in the filtered year range
     st.markdown('<div class="chart-card"><div class="chart-title">Trend Per-Hazard</div><div class="chart-sub">Select hazards to compare over time</div>', unsafe_allow_html=True)
-    all_hazards = sorted(tidy["hazard_type"].unique().tolist())
-    selected    = st.multiselect("Hazard types", all_hazards, default=summary.head(5)["hazard_type"].tolist()[:3], key="analytics_sel")
+    all_hazards = sorted(tidy_f["hazard_type"].unique().tolist())
+    # Default: top 3 hazards that exist in the current filter
+    top_hazards_in_range = (
+        tidy_f.groupby("hazard_type")[metric].sum()
+        .sort_values(ascending=False)
+        .head(3)
+        .index.tolist()
+    )
+    selected = st.multiselect(
+        "Hazard types", all_hazards,
+        default=[h for h in top_hazards_in_range if h in all_hazards],
+        key="analytics_sel"
+    )
     if selected:
         colors_map = [ACCENT, CYAN, ORANGE, GREEN, PURPLE, "#F6D860"]
         fig = go.Figure()
         sel_df = tidy_f[tidy_f["hazard_type"].isin(selected)].copy()
+
         for i, h in enumerate(selected):
             d = sel_df[sel_df["hazard_type"] == h].sort_values("year")
-            fig.add_trace(go.Scatter(
-                x=d["year"], y=d[metric], name=h.split("(")[0].strip()[:25],
-                line=dict(color=colors_map[i % len(colors_map)], width=2.5),
-                mode="lines+markers", marker=dict(size=6),
-                hovertemplate=f"<b>{h[:30]}</b><br>Year: %{{x}}<br>{metric}: %{{y:,.0f}}<extra></extra>"))
+            if len(d) == 0:
+                continue
+            color = colors_map[i % len(colors_map)]
+            label = h.split("(")[0].strip()[:25]
+
+            # KEY FIX: if only 1 data point, switch to markers-only with a
+            # larger marker so it is actually visible; add a text annotation
+            if len(d) == 1:
+                fig.add_trace(go.Scatter(
+                    x=d["year"], y=d[metric],
+                    name=label,
+                    mode="markers+text",
+                    marker=dict(size=14, color=color,
+                                line=dict(color="white", width=2),
+                                symbol="circle"),
+                    text=[fmt_millions(int(d[metric].iloc[0]))],
+                    textposition="top center",
+                    textfont=dict(color=color, size=10),
+                    hovertemplate=f"<b>{h[:30]}</b><br>Year: %{{x}}<br>{metric}: %{{y:,.0f}}<extra></extra>",
+                ))
+            else:
+                fig.add_trace(go.Scatter(
+                    x=d["year"], y=d[metric],
+                    name=label,
+                    line=dict(color=color, width=2.5),
+                    mode="lines+markers",
+                    marker=dict(size=7, color=color,
+                                line=dict(color="white", width=1.5)),
+                    hovertemplate=f"<b>{h[:30]}</b><br>Year: %{{x}}<br>{metric}: %{{y:,.0f}}<extra></extra>",
+                ))
+
         apply_theme(fig)
-        fig.update_layout(height=300, xaxis=dict(tickmode="linear", dtick=1))
+        fig.update_layout(
+            height=320,
+            xaxis=dict(
+                tickmode="linear", dtick=1,
+                range=[year_range[0] - 0.5, year_range[1] + 0.5],
+            ),
+            yaxis=dict(tickformat=".2s"),
+            legend=dict(orientation="h", y=-0.22, font=dict(size=9)),
+            margin=dict(l=10, r=10, t=30, b=50),
+        )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     else:
         st.info("Select at least one hazard type above.")
@@ -683,7 +732,6 @@ def page_analytics():
                 'Climatological · Biological · Combined Events</div>',
                 unsafe_allow_html=True)
 
-    # Assign categories to filtered data
     cat_df = tidy_f.copy()
     cat_df["category"] = cat_df["hazard_type"].apply(assign_category)
     cat_summary = (
@@ -693,11 +741,9 @@ def page_analytics():
         .reset_index()
     )
     cat_summary.columns = ["category", "value"]
-    cat_colors_list = [CAT_COLORS[c] for c in cat_summary["category"]]
 
     row1_l, row1_r = st.columns([1, 1], gap="medium")
 
-    # ── Chart A: Donut — share by category ────────────────────────────────
     with row1_l:
         nonzero = cat_summary[cat_summary["value"] > 0]
         fig = go.Figure(go.Pie(
@@ -722,18 +768,12 @@ def page_analytics():
         )
         apply_theme(fig)
         fig.update_layout(
-            height=320,
-            showlegend=False,
+            height=320, showlegend=False,
             margin=dict(l=10, r=10, t=10, b=10),
-            title=dict(
-                text="Category Share",
-                font=dict(size=11, color=PAL["sub"], family="DM Mono"),
-                x=0.5, xanchor="center",
-            ),
+            title=dict(text="Category Share", font=dict(size=11, color=PAL["sub"], family="DM Mono"), x=0.5, xanchor="center"),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-    # Chart B: Horizontal bar — absolute totals 
     with row1_r:
         cat_sorted = cat_summary.sort_values("value")
         fig = go.Figure(go.Bar(
@@ -753,15 +793,10 @@ def page_analytics():
             xaxis=dict(tickformat=".2s", showgrid=True),
             yaxis=dict(tickfont=dict(size=10)),
             margin=dict(l=10, r=60, t=30, b=10),
-            title=dict(
-                text="Total Affected by Category",
-                font=dict(size=11, color=PAL["sub"], family="DM Mono"),
-                x=0.5, xanchor="center",
-            ),
+            title=dict(text="Total Affected by Category", font=dict(size=11, color=PAL["sub"], family="DM Mono"), x=0.5, xanchor="center"),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-    # Chart C: Stacked bar — category trend per year
     cat_year = (
         cat_df.groupby(["year", "category"])[metric]
         .sum()
@@ -773,51 +808,35 @@ def page_analytics():
     for cat in list(HAZARD_CATEGORIES.keys()):
         if cat in cat_year.columns and cat_year[cat].sum() > 0:
             fig.add_trace(go.Bar(
-                x=cat_year["year"],
-                y=cat_year[cat],
-                name=cat,
+                x=cat_year["year"], y=cat_year[cat], name=cat,
                 marker_color=CAT_COLORS[cat],
                 hovertemplate=f"<b>{cat}</b><br>Year: %{{x}}<br>%{{y:,.0f}}<extra></extra>",
             ))
     apply_theme(fig)
     fig.update_layout(
-        barmode="stack",
-        height=300,
+        barmode="stack", height=300,
         xaxis=dict(tickmode="linear", dtick=1),
-        yaxis=dict(tickformat=".2s",
-                   title="Persons Affected" if metric == "persons_affected" else "Families Affected"),
-        legend=dict(orientation="h", y=-0.22, font=dict(size=9),
-                    traceorder="normal"),
+        yaxis=dict(tickformat=".2s", title="Persons Affected" if metric == "persons_affected" else "Families Affected"),
+        legend=dict(orientation="h", y=-0.22, font=dict(size=9), traceorder="normal"),
         margin=dict(l=10, r=10, t=30, b=40),
-        title=dict(
-            text="Category Impact by Year (Stacked)",
-            font=dict(size=11, color=PAL["sub"], family="DM Mono"),
-            x=0.5, xanchor="center",
-        ),
+        title=dict(text="Category Impact by Year (Stacked)", font=dict(size=11, color=PAL["sub"], family="DM Mono"), x=0.5, xanchor="center"),
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-    # KPI row — category stats 
     top_cat  = cat_summary.loc[cat_summary["value"].idxmax(), "category"]
     top_val  = int(cat_summary["value"].max())
     top_pct  = top_val / total_cat * 100 if total_cat > 0 else 0
     n_active = int((cat_summary["value"] > 0).sum())
-
-    cat_year_top = (
-        cat_df[cat_df["category"] == top_cat]
-        .groupby("year")[metric].sum()
-    )
+    cat_year_top = cat_df[cat_df["category"] == top_cat].groupby("year")[metric].sum()
     peak_yr = int(cat_year_top.idxmax()) if len(cat_year_top) > 0 else "—"
 
     kpi_html = (
-        kpi_card("Dominant Category",  top_cat,              f"{top_pct:.0f}% of total",    CAT_COLORS[top_cat])
-        + kpi_card("Peak Impact",      fmt_millions(top_val), top_cat,                       ACCENT)
-        + kpi_card("Active Categories", str(n_active),        f"out of {len(HAZARD_CATEGORIES)}", CYAN)
-        + kpi_card("Peak Year",        str(peak_yr),          f"for {top_cat}",              ORANGE)
+        kpi_card("Dominant Category",   top_cat,               f"{top_pct:.0f}% of total",    CAT_COLORS[top_cat])
+        + kpi_card("Peak Impact",       fmt_millions(top_val), top_cat,                        ACCENT)
+        + kpi_card("Active Categories", str(n_active),         f"out of {len(HAZARD_CATEGORIES)}", CYAN)
+        + kpi_card("Peak Year",         str(peak_yr),          f"for {top_cat}",               ORANGE)
     )
-    st.markdown(f'<div class="kpi-row" style="margin-top:14px;">{kpi_html}</div>',
-                unsafe_allow_html=True)
-
+    st.markdown(f'<div class="kpi-row" style="margin-top:14px;">{kpi_html}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -842,19 +861,104 @@ def page_visuals():
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="chart-card"><div class="chart-title">Impact Bubble Timeline</div><div class="chart-sub">Bubble size = persons affected · Animated by year</div>', unsafe_allow_html=True)
-    top10_h   = summary.head(10)["hazard_type"].tolist()
-    bubble_df = tidy[tidy["hazard_type"].isin(top10_h)].copy()
-    bubble_df["rank"] = bubble_df["hazard_type"].map({h:i for i,h in enumerate(top10_h)})
-    fig = px.scatter(bubble_df.sort_values("year"), x="rank", y="persons_affected",
-        size="persons_affected", color="hazard_type", animation_frame="year", size_max=80,
-        hover_name="hazard_type",
-        hover_data={"persons_affected":":,.0f","families_affected":":,.0f","rank":False},
-        color_discrete_sequence=[ACCENT,CYAN,ORANGE,GREEN,PURPLE,"#F6D860","#A8DADC","#E9C46A","#264653","#2A9D8F"],
-        labels={"persons_affected":"Persons Affected","rank":"Hazard Rank"})
+    # ── FIX: Bubble Timeline ──────────────────────────────────────────────
+    st.markdown('<div class="chart-card"><div class="chart-title">Impact Bubble Timeline</div>'
+                '<div class="chart-sub">Bubble size = persons affected · Animated by year · '
+                'Each hazard shown in every frame</div>', unsafe_allow_html=True)
+
+    top10_h = summary.head(10)["hazard_type"].tolist()
+    all_years = sorted(tidy["year"].unique())
+
+    # Build a COMPLETE cross-product so every hazard appears in every frame.
+    # Plotly animation requires the same set of traces in every frame or
+    # bubbles disappear / the animation stalls.
+    idx = pd.MultiIndex.from_product([top10_h, all_years], names=["hazard_type", "year"])
+    full_grid = pd.DataFrame(index=idx).reset_index()
+
+    raw = (
+        tidy[tidy["hazard_type"].isin(top10_h)][["hazard_type", "year", "persons_affected", "families_affected"]]
+        .groupby(["hazard_type", "year"], as_index=False)
+        .sum()
+    )
+
+    bubble_df = full_grid.merge(raw, on=["hazard_type", "year"], how="left")
+    bubble_df["persons_affected"]  = bubble_df["persons_affected"].fillna(0)
+    bubble_df["families_affected"] = bubble_df["families_affected"].fillna(0)
+
+    # Rank is fixed so hazards keep their horizontal position across frames
+    rank_map = {h: i for i, h in enumerate(top10_h)}
+    bubble_df["rank"] = bubble_df["hazard_type"].map(rank_map)
+
+    # px.scatter needs a positive size column; use a tiny minimum so zero
+    # values produce a visible (but tiny) placeholder bubble
+    MIN_BUBBLE = bubble_df[bubble_df["persons_affected"] > 0]["persons_affected"].min() * 0.05
+    bubble_df["bubble_size"] = bubble_df["persons_affected"].clip(lower=MIN_BUBBLE)
+
+    short_labels = [h.split("(")[0].strip()[:20] for h in top10_h]
+    bubble_df["label"] = bubble_df["hazard_type"].map(
+        {h: short_labels[i] for i, h in enumerate(top10_h)}
+    )
+
+    bubble_colors = [ACCENT, CYAN, ORANGE, GREEN, PURPLE,
+                     "#F6D860", "#A8DADC", "#E9C46A", "#264653", "#2A9D8F"]
+
+    fig = px.scatter(
+        bubble_df.sort_values("year"),
+        x="rank",
+        y="persons_affected",
+        size="bubble_size",
+        color="hazard_type",
+        animation_frame="year",
+        size_max=80,
+        hover_name="label",
+        hover_data={
+            "persons_affected":  ":,.0f",
+            "families_affected": ":,.0f",
+            "rank":              False,
+            "bubble_size":       False,
+        },
+        color_discrete_sequence=bubble_colors,
+        labels={"persons_affected": "Persons Affected", "rank": "Hazard"},
+        category_orders={"hazard_type": top10_h},
+    )
+
+    # Replace numeric x-axis with short hazard name labels
     apply_theme(fig)
-    fig.update_layout(height=380, showlegend=False, xaxis=dict(showticklabels=False,title=""), yaxis=dict(tickformat=".2s"))
-    fig.update_traces(marker=dict(opacity=0.85, line=dict(width=1, color="white")))
+    fig.update_layout(
+        height=420,
+        showlegend=False,
+        xaxis=dict(
+            tickmode="array",
+            tickvals=list(range(len(top10_h))),
+            ticktext=short_labels,
+            tickfont=dict(size=9),
+            title="",
+        ),
+        yaxis=dict(tickformat=".2s", title="Persons Affected"),
+        margin=dict(l=10, r=10, t=40, b=60),
+        # Speed up the animation slightly
+        updatemenus=[dict(
+            type="buttons",
+            showactive=False,
+            y=1.15, x=0.5, xanchor="center",
+            buttons=[
+                dict(label="▶ Play",  method="animate",
+                     args=[None, {"frame": {"duration": 700, "redraw": True},
+                                  "fromcurrent": True, "transition": {"duration": 300}}]),
+                dict(label="⏸ Pause", method="animate",
+                     args=[[None], {"frame": {"duration": 0, "redraw": False},
+                                    "mode": "immediate", "transition": {"duration": 0}}]),
+            ],
+        )],
+        sliders=[dict(
+            currentvalue=dict(prefix="Year: ", font=dict(color=PAL["sub"], size=12)),
+            pad=dict(t=10),
+            font=dict(color=PAL["sub"]),
+        )],
+    )
+    fig.update_traces(
+        marker=dict(opacity=0.85, line=dict(width=1.5, color="white"))
+    )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -926,7 +1030,6 @@ def page_classify(model):
     st.markdown('<div class="pg-title">Image Classifier</div>', unsafe_allow_html=True)
     st.markdown('<div class="pg-sub">Upload a disaster image for real-time disaster classification</div>', unsafe_allow_html=True)
 
-    # Upload and result 
     if model is None:
         st.warning("Model not found at `models/disaster_classifier.keras`. The analytics dashboard works independently of the model.")
     else:
@@ -981,7 +1084,6 @@ def page_classify(model):
                     f'<div class="result-box" style="text-align:center;padding:52px;color:{PAL["sub"]};">'
                     'Results will appear here after classification.</div>', unsafe_allow_html=True)
 
-    # Classification Frequency Charts 
     st.markdown("---")
     hist_df = load_predictions()
     if len(hist_df) > 0:
@@ -989,31 +1091,26 @@ def page_classify(model):
 
         ch1, ch2, ch3 = st.columns(3, gap="medium")
 
-        # Chart 1 — count per class (donut chart)
         with ch1:
             counts = hist_df["pred_class"].value_counts().reset_index()
             counts.columns = ["class", "count"]
             counts["color"] = counts["class"].map(CLS_HEX)
             fig = go.Figure(go.Pie(
                 labels=[c.title() for c in counts["class"]],
-                values=counts["count"],
-                hole=0.6,
+                values=counts["count"], hole=0.6,
                 marker_colors=list(counts["color"]),
-                textinfo="percent",
-                textfont=dict(size=10, color="white"),
+                textinfo="percent", textfont=dict(size=10, color="white"),
                 hovertemplate="<b>%{label}</b><br>%{value} images<br>%{percent}<extra></extra>",
                 sort=False))
             fig.add_annotation(
                 text=f"<b>{len(hist_df)}</b><br><span style='font-size:9px'>Total</span>",
-                x=0.5, y=0.5, showarrow=False,
-                font=dict(color="white", size=14, family="Syne"))
+                x=0.5, y=0.5, showarrow=False, font=dict(color="white", size=14, family="Syne"))
             apply_theme(fig)
             fig.update_layout(height=240, showlegend=True, margin=dict(l=0,r=0,t=10,b=0),
                 legend=dict(orientation="h", y=-0.15, font=dict(size=9)))
             st.markdown('<div style="font-family:DM Mono,monospace;font-size:0.6rem;color:' + PAL["sub"] + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Class Distribution</div>', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-        # Chart 2 — avg confidence per class (horizontal bar)
         with ch2:
             avg_conf = hist_df.groupby("pred_class")["confidence"].mean().reset_index()
             avg_conf = avg_conf.sort_values("confidence")
@@ -1033,7 +1130,6 @@ def page_classify(model):
             st.markdown('<div style="font-family:DM Mono,monospace;font-size:0.6rem;color:' + PAL["sub"] + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Avg Confidence per Class</div>', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-        # Chart 3 — classification trend over time
         with ch3:
             hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"])
             hist_df["date"] = hist_df["timestamp"].dt.strftime("%Y-%m-%d")
@@ -1043,10 +1139,8 @@ def page_classify(model):
             for c in CLASS_NAMES:
                 if c in trend.columns and trend[c].sum() > 0:
                     fig.add_trace(go.Scatter(
-                        x=trend.index, y=trend[c],
-                        name=c.title(), mode="lines+markers",
-                        line=dict(color=CLS_HEX[c], width=2),
-                        marker=dict(size=5),
+                        x=trend.index, y=trend[c], name=c.title(), mode="lines+markers",
+                        line=dict(color=CLS_HEX[c], width=2), marker=dict(size=5),
                         hovertemplate=f"<b>{c.title()}</b><br>%{{x}}<br>Count: %{{y}}<extra></extra>"))
             apply_theme(fig)
             fig.update_layout(height=240, showlegend=True,
@@ -1063,7 +1157,6 @@ def page_classify(model):
             'No classifications yet — upload and classify an image above to see activity charts.</div>',
             unsafe_allow_html=True)
 
-    # Model Performance
     with st.expander("Model Performance Details", expanded=False):
         c5, c6 = st.columns(2, gap="medium")
         with c5:
