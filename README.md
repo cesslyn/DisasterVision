@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="dashboard_screenshot.png" width="700" alt="DisasterVision dashboard screenshot" />
+  <img src="image/dashboard_screenshot.png" width="700" alt="DisasterVision dashboard screenshot" />
 </p>
 
 <h1 align="center">🌪️ DisasterVision</h1>
@@ -188,9 +188,3 @@ If not, feel free to open a new issue. To help track it down quickly, please inc
 - Relevant logs/traceback from `streamlit run app.py`
 - Screenshots, if it's a dashboard/UI issue
 - Whether it happens on the Dashboard side, the Classifier side, or both
-
----
-
-## 📄 License
-
-This project was built for academic purposes as part of a computing capstone. Add your preferred license here (e.g. MIT) if you plan to share or reuse this code.
