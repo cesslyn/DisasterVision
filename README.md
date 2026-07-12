@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="image/dashboard_screenshot.png" width="700" alt="DisasterVision dashboard screenshot" />
-</p>
-
 <h1 align="center">🌪️ DisasterVision</h1>
 
 <p align="center">
@@ -13,6 +9,10 @@
   <img src="https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white" alt="TensorFlow" />
   <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit" />
   <img src="https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white" alt="Plotly" />
+</p>
+
+<p align="center">
+  <img src="image/dashboard_screenshot.png" width="700" alt="DisasterVision dashboard screenshot" />
 </p>
 
 <br>
@@ -104,7 +104,8 @@ Confusion matrix and training curves are available in `eval/`.
 │
 ├── number_of_affected_people.xlsx  # Raw source dataset
 ├── predictions.db                  # SQLite DB of classifier predictions
-├── dashboard_screenshot.png        # Dashboard preview image
+├── image/
+│   └── dashboard_screenshot.png    # Dashboard preview image
 └── requirements.txt
 ```
 
@@ -188,3 +189,4 @@ If not, feel free to open a new issue. To help track it down quickly, please inc
 - Relevant logs/traceback from `streamlit run app.py`
 - Screenshots, if it's a dashboard/UI issue
 - Whether it happens on the Dashboard side, the Classifier side, or both
+
