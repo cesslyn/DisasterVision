@@ -27,7 +27,6 @@
 - [🗄️ Dataset](#️-dataset)
 - [🤝 Contributing](#-contributing)
 - [🐛 Issues](#-issues)
-- [📄 License](#-license)
 
 ---
 
